@@ -43,8 +43,10 @@ async function extractTextFromPDF(buffer: Buffer, hasMistralKey: boolean): Promi
       // fall through to pdf-parse
     }
   }
-  const { text } = await extractText(new Uint8Array(buffer))
-  return text.join('\n')
+  const { text } = await extractText(new Uint8Array(buffer), { mergePages: true })
+  const merged = typeof text === 'string' ? text : (text as string[]).join('\n')
+  console.log('[upload] extracted text length:', merged.length)
+  return merged
 }
 
 export async function POST(req: NextRequest) {
