@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 })
   }
 
-  const admin = await createAdminClient()
+  const admin = createAdminClient()
 
   // Create document record
   const { data: doc, error: docErr } = await admin
@@ -130,7 +130,7 @@ export async function GET(req: NextRequest) {
   const docId = req.nextUrl.searchParams.get('doc_id')
   if (!docId) return NextResponse.json({ error: 'doc_id required' }, { status: 400 })
 
-  const admin = await createAdminClient()
+  const admin = createAdminClient()
   const { data } = await admin
     .from('documents')
     .select('id, status, filename')

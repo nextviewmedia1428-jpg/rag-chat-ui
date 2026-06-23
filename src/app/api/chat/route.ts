@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'conversation_id and message required' }, { status: 400 })
   }
 
-  const admin = await createAdminClient()
+  const admin = createAdminClient()
 
   // Check daily token limit
   const today = new Date().toISOString().slice(0, 10)
@@ -94,7 +94,7 @@ ${context ? `Relevant context from the user's uploaded documents:\n\n${context}\
   })
 }
 
-async function semanticSearch(query: string, userId: string, admin: ReturnType<typeof createAdminClient> extends Promise<infer T> ? T : never): Promise<string[]> {
+async function semanticSearch(query: string, userId: string, admin: ReturnType<typeof createAdminClient>): Promise<string[]> {
   const embeddingRes = await openai.embeddings.create({
     model: 'text-embedding-3-small',
     input: query,
