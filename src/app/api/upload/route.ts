@@ -57,8 +57,8 @@ export async function POST(req: NextRequest) {
   if (!file || file.type !== 'application/pdf') {
     return NextResponse.json({ error: 'PDF file required' }, { status: 400 })
   }
-  if (file.size > 10 * 1024 * 1024) {
-    return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 })
+  if (file.size > 4 * 1024 * 1024) {
+    return NextResponse.json({ error: 'File too large (max 4MB on free hosting)' }, { status: 400 })
   }
 
   const admin = createAdminClient()
@@ -88,6 +88,12 @@ async function processDocument(
   try {
     const buffer = Buffer.from(await file.arrayBuffer())
     const text = await extractTextFromPDF(buffer, !!process.env.MISTRAL_API_KEY)
+
+    if (text.trim().length < 50) {
+      console.error('[upload] Extracted text too short — scanned/image PDF?', text.length)
+      await admin.from('documents').update({ status: 'error' }).eq('id', docId)
+      return
+    }
 
     // 1. Send to LightRAG
     if (LIGHTRAG_URL) {
