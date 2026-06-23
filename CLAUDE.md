@@ -33,13 +33,14 @@ Browser → POST /api/upload (Next.js on Vercel)
     │
     ├─ 1. Auth check (Supabase JWT)
     ├─ 2. Create document record in Supabase (status: processing)
-    ├─ 3. Extract text:
+    ├─ 3. Extract text for Supabase:
     │       └─ Mistral OCR if MISTRAL_API_KEY set (handles image PDFs)
-    │       └─ pdf-parse fallback (text-based PDFs)
-    ├─ 4. Send full text → LightRAG /api/v1/insert
-    │       └─ LightRAG builds a knowledge graph + vector index (GraphRAG)
+    │       └─ unpdf fallback (text-based PDFs, serverless-compatible)
+    ├─ 4. Send original PDF file → LightRAG POST /documents/upload (multipart)
+    │       └─ LightRAG does its own PDF extraction + builds knowledge graph
     │       └─ Runs on Render, uses OpenAI gpt-4o-mini to extract entities/relations
-    ├─ 5. Chunk text (1500 chars, 150 overlap) → embed with OpenAI text-embedding-3-small
+    │       └─ Graph building is async — appears in WebUI 30–60s after upload
+    ├─ 5. Chunk extracted text (1500 chars, 150 overlap) → embed with OpenAI text-embedding-3-small
     │       └─ Store chunks + embeddings in Supabase pgvector
     └─ 6. Update document status → ready
 ```
@@ -107,6 +108,7 @@ gpt-4o-mini for graph building        text-embedding-3-small
 | Database | Supabase (PostgreSQL + pgvector) | Auth + chunks + metadata |
 | LLM (chat + graph) | OpenAI gpt-4o-mini | Chat synthesis + LightRAG graph building |
 | Embeddings | OpenAI text-embedding-3-small (1536d) | Both upload and query |
+| PDF extraction | unpdf (serverless-compatible pdfjs WASM) | Replaced pdf-parse which crashes on Vercel Turbopack |
 | Vision OCR | Mistral OCR API | Optional — image-heavy PDFs only |
 
 ---
@@ -166,9 +168,12 @@ Swap persona via `PersonaSelector.tsx` — changes the system prompt on every ch
 
 ## Known Limitations (free tier)
 
-- **LightRAG on Render free tier spins down after 15 min inactivity.** First request after sleep takes ~30s cold start. Knowledge graph resets on each redeploy (no persistent disk).
+- **LightRAG on Render free tier spins down after 15 min inactivity.** First request after sleep takes ~30s cold start. Knowledge graph resets on each redeploy (no persistent disk — `/tmp` only).
+- **File size limit: 4MB.** Vercel Hobby serverless functions have a hard 4.5MB body payload limit. PDFs larger than 4MB are rejected. Upgrade to Vercel Pro or switch to direct-to-Supabase-Storage upload to lift this.
+- **Upload is synchronous.** Vercel kills background tasks after the response is sent, so the full pipeline (extract → LightRAG → embed → pgvector) runs before returning. Large PDFs near the 4MB limit may approach the 60s function timeout.
+- **LightRAG only indexes text-layer PDFs.** Scanned/image PDFs need `MISTRAL_API_KEY` set for OCR — otherwise extraction returns empty text.
 - **Supabase free tier:** 500MB storage, 50K monthly active users.
-- **Vercel Hobby:** Serverless functions have 10s timeout — large PDFs may time out on the embedding step.
+- **LightRAG correct API endpoints:** `POST /documents/upload` (multipart file), `POST /query` (search). Not `/api/v1/insert` or `/api/v1/query`.
 
 ---
 
@@ -181,11 +186,12 @@ Swap persona via `PersonaSelector.tsx` — changes the system prompt on every ch
 | LightRAG on Render | ✅ Live |
 | Next.js scaffold | ✅ Done |
 | Auth (Supabase) | ✅ Done |
-| PDF upload flow | ✅ Done |
-| Chat + dual retrieval | ✅ Done |
+| PDF upload flow | ✅ Working (text-based PDFs ≤4MB) |
+| Chat + dual retrieval | ✅ Working |
 | UI components | ✅ Done |
 | Vercel deploy | ✅ Live |
-| Loom demo | ⬜ Pending |
+| Email confirmation redirect | ✅ Fixed (Supabase Site URL set to Vercel URL) |
+| Loom demo | ⬜ Pending — record tomorrow |
 
 ---
 
