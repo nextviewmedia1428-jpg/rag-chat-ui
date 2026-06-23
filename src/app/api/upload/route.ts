@@ -99,11 +99,17 @@ async function processDocument(
 
     // 1. Send to LightRAG
     if (LIGHTRAG_URL) {
-      await fetch(`${LIGHTRAG_URL}/api/v1/insert`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, metadata: { user_id: userId, doc_id: docId } }),
-      }).catch(() => {})  // non-fatal
+      try {
+        const lrRes = await fetch(`${LIGHTRAG_URL}/api/v1/insert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        })
+        const lrBody = await lrRes.text()
+        console.log('[upload] LightRAG insert status:', lrRes.status, lrBody.slice(0, 200))
+      } catch (e) {
+        console.error('[upload] LightRAG insert error:', e)
+      }
     }
 
     // 2. Chunk + embed → Supabase pgvector
