@@ -111,7 +111,7 @@ async function semanticSearch(query: string, userId: string, admin: ReturnType<t
 
 async function lightragQuery(query: string): Promise<string> {
   if (!LIGHTRAG_URL) return ''
-  const res = await fetch(`${LIGHTRAG_URL}/api/v1/query`, {
+  const res = await fetch(`${LIGHTRAG_URL}/query`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, mode: 'hybrid', top_k: 5 }),

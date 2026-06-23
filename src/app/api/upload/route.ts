@@ -100,7 +100,7 @@ async function processDocument(
     // 1. Send to LightRAG
     if (LIGHTRAG_URL) {
       try {
-        const lrRes = await fetch(`${LIGHTRAG_URL}/api/v1/insert`, {
+        const lrRes = await fetch(`${LIGHTRAG_URL}/documents/text`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text }),
