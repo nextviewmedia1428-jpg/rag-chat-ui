@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase-server'
 import OpenAI from 'openai'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse: (buffer: Buffer) => Promise<{ text: string }> = require('pdf-parse')
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 const LIGHTRAG_URL = process.env.LIGHTRAG_URL
@@ -44,6 +42,8 @@ async function extractTextFromPDF(buffer: Buffer, hasMistralKey: boolean): Promi
       // fall through to pdf-parse
     }
   }
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const pdfParse: (buffer: Buffer) => Promise<{ text: string }> = require('pdf-parse')
   const result = await pdfParse(buffer)
   return result.text
 }
