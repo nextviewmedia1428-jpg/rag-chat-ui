@@ -97,18 +97,19 @@ async function processDocument(
       return
     }
 
-    // 1. Send to LightRAG
+    // 1. Send original PDF file to LightRAG (it does its own extraction)
     if (LIGHTRAG_URL) {
       try {
-        const lrRes = await fetch(`${LIGHTRAG_URL}/documents/text`, {
+        const form = new FormData()
+        form.append('file', new Blob([buffer], { type: 'application/pdf' }), file.name)
+        const lrRes = await fetch(`${LIGHTRAG_URL}/documents/upload`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text }),
+          body: form,
         })
         const lrBody = await lrRes.text()
-        console.log('[upload] LightRAG insert status:', lrRes.status, lrBody.slice(0, 200))
+        console.log('[upload] LightRAG upload status:', lrRes.status, lrBody.slice(0, 200))
       } catch (e) {
-        console.error('[upload] LightRAG insert error:', e)
+        console.error('[upload] LightRAG upload error:', e)
       }
     }
 
