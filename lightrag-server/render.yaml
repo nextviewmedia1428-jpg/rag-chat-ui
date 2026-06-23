@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: lightrag-server
+    runtime: python
+    buildCommand: pip install "lightrag-hku[api]"
+    startCommand: python serve.py
+    plan: free
+    envVars:
+      - key: LLM_PROVIDER
+        value: openai
+      - key: LLM_MODEL
+        value: gpt-4o-mini
+      - key: EMBEDDING_PROVIDER
+        value: openai
+      - key: EMBEDDING_MODEL
+        value: text-embedding-3-small
+      - key: OPENAI_API_KEY
+        sync: false   # set in Render dashboard
+      - key: WORKING_DIR
+        value: /tmp/lightrag_data
+      - key: MAX_TOKENS
+        value: "32768"
