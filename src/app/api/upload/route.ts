@@ -117,7 +117,8 @@ async function processDocument(
     }
 
     await admin.from('documents').update({ status: 'ready' }).eq('id', docId)
-  } catch {
+  } catch (err) {
+    console.error('[upload] processDocument failed:', err)
     await admin.from('documents').update({ status: 'error' }).eq('id', docId)
   }
 }
