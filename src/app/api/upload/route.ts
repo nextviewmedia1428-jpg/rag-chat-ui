@@ -72,10 +72,11 @@ export async function POST(req: NextRequest) {
     .single()
   if (docErr) return NextResponse.json({ error: 'DB error' }, { status: 500 })
 
-  // Process in background (don't await full pipeline — return doc_id immediately)
-  void processDocument(doc.id, user.id, file, admin)
+  // Process synchronously — Vercel kills background tasks after response is sent
+  await processDocument(doc.id, user.id, file, admin)
 
-  return NextResponse.json({ document_id: doc.id, status: 'processing' })
+  const { data: updated } = await admin.from('documents').select('status').eq('id', doc.id).single()
+  return NextResponse.json({ document_id: doc.id, status: updated?.status ?? 'processing' })
 }
 
 async function processDocument(
