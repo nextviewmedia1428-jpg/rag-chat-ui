@@ -6,57 +6,169 @@ Portfolio Project #1. A RAG chatbot where users upload PDFs and chat with an AI 
 
 **Upwork pitch angle:** "AI-powered document assistant — upload any PDF and chat with it instantly."
 
+**No n8n involved.** This is a direct API integration stack — Next.js calls LightRAG, Supabase, and OpenAI directly.
+
 ---
 
-## Architecture
+## Live URLs
+
+| Service | URL | Platform |
+|---|---|---|
+| Frontend (UI) | https://rag-chat-ui-psi.vercel.app | Vercel (Hobby) |
+| LightRAG backend | https://ai-rag-agent-zs1y.onrender.com | Render (Free tier) |
+| Database / Auth | https://vwdcmbroznmjrzcmzyss.supabase.co | Supabase |
+
+**GitHub repos:**
+- UI: https://github.com/nextviewmedia1428-jpg/rag-chat-ui
+- LightRAG server config: https://github.com/nextviewmedia1428-jpg/AI-RAG-AGENT
+
+---
+
+## How the Stack Works (full data flow)
+
+### Upload flow (user uploads a PDF)
 
 ```
-Next.js (Vercel)  →  LightRAG (Render)  →  knowledge graph retrieval
-                  →  Supabase pgvector  →  semantic chunk retrieval
-                  →  Claude Haiku 4.5   →  answer synthesis
-                  →  Mistral OCR        →  vision/image PDF handling
+Browser → POST /api/upload (Next.js on Vercel)
+    │
+    ├─ 1. Auth check (Supabase JWT)
+    ├─ 2. Create document record in Supabase (status: processing)
+    ├─ 3. Extract text:
+    │       └─ Mistral OCR if MISTRAL_API_KEY set (handles image PDFs)
+    │       └─ pdf-parse fallback (text-based PDFs)
+    ├─ 4. Send full text → LightRAG /api/v1/insert
+    │       └─ LightRAG builds a knowledge graph + vector index (GraphRAG)
+    │       └─ Runs on Render, uses OpenAI gpt-4o-mini to extract entities/relations
+    ├─ 5. Chunk text (1500 chars, 150 overlap) → embed with OpenAI text-embedding-3-small
+    │       └─ Store chunks + embeddings in Supabase pgvector
+    └─ 6. Update document status → ready
 ```
 
-**Dual retrieval on every query:** LightRAG hybrid mode + Supabase pgvector, results merged before synthesis.
+### Chat flow (user asks a question)
+
+```
+Browser → POST /api/chat (Next.js on Vercel)
+    │
+    ├─ 1. Auth check + daily token limit check (Supabase)
+    ├─ 2. DUAL RETRIEVAL (runs in parallel):
+    │       ├─ A. Semantic search: embed query → match_chunks() in Supabase pgvector (top 5)
+    │       └─ B. Graph RAG: POST /api/v1/query to LightRAG (hybrid mode, top 5)
+    ├─ 3. Merge both result sets into a single context block
+    ├─ 4. Call OpenAI gpt-4o-mini with: system persona + merged context + message history
+    └─ 5. Save reply to Supabase, update token_usage
+```
+
+### Why dual retrieval?
+- **LightRAG (GraphRAG):** Understands entity relationships across the whole document. Better for "what is the relationship between X and Y?" questions.
+- **Supabase pgvector (semantic):** Fast, user-scoped chunk search. Better for "find the part that mentions X" questions.
+- Both run in parallel and their results are merged — covers each other's blind spots.
+
+### Why no n8n?
+n8n is for workflow automation between external services. This stack is a direct API product — Next.js server-side code handles all the logic. n8n would add latency and complexity for no gain here. n8n is used in other portfolio projects (lead management, calling agent).
+
+---
+
+## Architecture Diagram
+
+```
+User Browser
+    │
+    ▼
+Next.js API Routes (Vercel)
+    │
+    ├──────────────────────────────────────────┐
+    │                                          │
+    ▼                                          ▼
+LightRAG (Render)                     Supabase (pgvector)
+GraphRAG: entity/relation graph       Semantic chunk search
+gpt-4o-mini for graph building        text-embedding-3-small
+    │                                          │
+    └──────────────┬───────────────────────────┘
+                   │
+                   ▼
+           Merged context
+                   │
+                   ▼
+         OpenAI gpt-4o-mini
+         (answer synthesis)
+                   │
+                   ▼
+           Response to user
+```
 
 ---
 
 ## Tech Stack
 
-| Layer | Tech |
-|---|---|
-| Frontend | Next.js (App Router, TypeScript, Tailwind) |
-| Hosting | Vercel (frontend), Render free tier (LightRAG) |
-| Database | Supabase (Auth + PostgreSQL + pgvector) |
-| RAG engine | LightRAG (GraphRAG, hybrid retrieval mode) |
-| LLM | Claude Haiku 4.5 (claude-haiku-4-5) |
-| Embeddings | OpenAI text-embedding-3-small (1536d) |
-| Vision OCR | Mistral OCR API |
+| Layer | Tech | Notes |
+|---|---|---|
+| Frontend | Next.js 16, App Router, TypeScript, Tailwind | Vercel |
+| LightRAG backend | Python, FastAPI, LightRAG library | Render free tier |
+| Database | Supabase (PostgreSQL + pgvector) | Auth + chunks + metadata |
+| LLM (chat + graph) | OpenAI gpt-4o-mini | Chat synthesis + LightRAG graph building |
+| Embeddings | OpenAI text-embedding-3-small (1536d) | Both upload and query |
+| Vision OCR | Mistral OCR API | Optional — image-heavy PDFs only |
 
 ---
 
 ## Key Files
 
-- `supabase/schema.sql` — run once in Supabase SQL editor
-- `src/app/api/chat/route.ts` — dual retrieval + synthesis
-- `src/app/api/upload/route.ts` — PDF processing pipeline
-- `lightrag-server/` — LightRAG deployment config for Render
-- `.env.local` — all secrets (never commit)
+| File | Purpose |
+|---|---|
+| `src/app/api/chat/route.ts` | Dual retrieval + OpenAI synthesis |
+| `src/app/api/upload/route.ts` | PDF → LightRAG + Supabase pipeline |
+| `src/app/api/conversations/route.ts` | List / create conversations |
+| `src/lib/types.ts` | Persona type + PERSONA_PROMPTS |
+| `src/lib/supabase-server.ts` | Server-side Supabase clients (user + admin) |
+| `src/lib/supabase-browser.ts` | Browser-side Supabase client |
+| `supabase/schema.sql` | Full DB schema — run once in Supabase SQL editor |
+| `lightrag-server/serve.py` | LightRAG startup script (bypasses Gunicorn wrapper) |
+| `lightrag-server/render.yaml` | Render deployment config |
+| `.env.local` | All secrets — never commit |
 
 ---
 
 ## Environment Variables
 
-```
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY
-LIGHTRAG_URL                  # https://your-app.onrender.com
-OPENAI_API_KEY                # embeddings only
-ANTHROPIC_API_KEY             # Claude Haiku synthesis
-MISTRAL_API_KEY               # Vision OCR
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://vwdcmbroznmjrzcmzyss.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
+
+# LightRAG
+LIGHTRAG_URL=https://ai-rag-agent-zs1y.onrender.com
+
+# OpenAI (embeddings + chat synthesis + LightRAG graph building)
+OPENAI_API_KEY=sk-proj-...
+
+# Optional — Vision OCR for image-heavy PDFs
+MISTRAL_API_KEY=
+
+# Limits
 DAILY_TOKEN_LIMIT=50000
 ```
+
+---
+
+## Personas
+
+| Persona key | Behaviour |
+|---|---|
+| `assistant` | General-purpose helpful assistant |
+| `customer_support` | Friendly, solution-focused support agent |
+| `receptionist` | Warm, professional front-desk style |
+| `book_guide` | Academic, cites sections, encourages deeper reading |
+
+Swap persona via `PersonaSelector.tsx` — changes the system prompt on every chat request.
+
+---
+
+## Known Limitations (free tier)
+
+- **LightRAG on Render free tier spins down after 15 min inactivity.** First request after sleep takes ~30s cold start. Knowledge graph resets on each redeploy (no persistent disk).
+- **Supabase free tier:** 500MB storage, 50K monthly active users.
+- **Vercel Hobby:** Serverless functions have 10s timeout — large PDFs may time out on the embedding step.
 
 ---
 
@@ -65,16 +177,26 @@ DAILY_TOKEN_LIMIT=50000
 | Item | Status |
 |---|---|
 | Folder + docs | ✅ Done |
-| Supabase schema | ⬜ |
-| LightRAG on Render | ⬜ |
-| Next.js scaffold | ⬜ |
-| Auth | ⬜ |
-| PDF upload flow | ⬜ |
-| Chat + dual retrieval | ⬜ |
-| UI | ⬜ |
-| Vercel deploy | ⬜ |
-| Loom demo | ⬜ |
+| Supabase schema | ✅ Done |
+| LightRAG on Render | ✅ Live |
+| Next.js scaffold | ✅ Done |
+| Auth (Supabase) | ✅ Done |
+| PDF upload flow | ✅ Done |
+| Chat + dual retrieval | ✅ Done |
+| UI components | ✅ Done |
+| Vercel deploy | ✅ Live |
+| Loom demo | ⬜ Pending |
 
 ---
 
-*Last updated: 2026-06-23*
+## Loom Demo Script (3 min)
+
+1. **[0:00–0:20]** Open the live URL. "This is a document assistant that lets you chat with any PDF."
+2. **[0:20–0:50]** Sign up → lands on chat. Show the 4 personas in the sidebar.
+3. **[0:50–1:30]** Upload a PDF (use something with clear content). Watch status → ready.
+4. **[1:30–2:30]** Ask 2–3 questions. Show it citing content from the PDF. Switch persona mid-conversation.
+5. **[2:30–3:00]** "Built with Next.js, LightRAG GraphRAG, Supabase pgvector, and OpenAI. Dual retrieval gives better answers than either method alone."
+
+---
+
+*Last updated: 2026-06-24, Sprint 1, Day 3. Status: MVP deployed.*
