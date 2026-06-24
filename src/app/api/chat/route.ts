@@ -112,12 +112,21 @@ async function semanticSearch(query: string, userId: string, admin: ReturnType<t
 
 async function lightragQuery(query: string): Promise<string> {
   if (!LIGHTRAG_URL) return ''
-  const res = await fetch(`${LIGHTRAG_URL}/query`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, mode: 'hybrid', top_k: 5 }),
-  })
-  if (!res.ok) return ''
-  const data = await res.json()
-  return data.response ?? data.result ?? ''
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 8000)
+  try {
+    const res = await fetch(`${LIGHTRAG_URL}/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, mode: 'hybrid', top_k: 5 }),
+      signal: controller.signal,
+    })
+    if (!res.ok) return ''
+    const data = await res.json()
+    return data.response ?? data.result ?? ''
+  } catch {
+    return ''
+  } finally {
+    clearTimeout(timeout)
+  }
 }
