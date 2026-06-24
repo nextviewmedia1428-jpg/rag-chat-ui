@@ -6,6 +6,7 @@ import { MessageBubble } from './MessageBubble'
 import { ChatInput } from './ChatInput'
 import { useChat } from '@/hooks/useChat'
 import { TokenUsageBadge } from './TokenUsageBadge'
+import { useChatContext } from '@/lib/chat-context'
 
 const DAILY_LIMIT = 50000
 
@@ -18,9 +19,12 @@ interface Props {
 export function ChatWindow({ conversationId, persona, initialMessages = [] }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const [tokensRemaining, setTokensRemaining] = useState(DAILY_LIMIT)
+  const { systemPrompt, knowledgeBase } = useChatContext()
   const { messages, isLoading, error, sendMessage } = useChat({
     conversationId,
     persona,
+    systemPrompt: systemPrompt || undefined,
+    knowledgeBase: knowledgeBase || undefined,
     initialMessages,
     onTokensUpdate: setTokensRemaining,
   })

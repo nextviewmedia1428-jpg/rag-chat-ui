@@ -25,13 +25,14 @@ export interface Message {
   created_at: string
 }
 
-export type Persona = 'assistant' | 'customer_support' | 'receptionist' | 'book_guide'
+export type Persona = 'assistant' | 'customer_support' | 'receptionist' | 'book_guide' | 'custom'
 
 export const PERSONA_LABELS: Record<Persona, string> = {
   assistant: 'General Assistant',
   customer_support: 'Customer Support',
   receptionist: 'Receptionist',
   book_guide: 'Book Guide',
+  custom: 'Custom',
 }
 
 export const PERSONA_PROMPTS: Record<Persona, string> = {
@@ -43,4 +44,5 @@ export const PERSONA_PROMPTS: Record<Persona, string> = {
     'You are a warm virtual receptionist. Greet users, help them find information from the provided documents, and guide them to the right resources.',
   book_guide:
     'You are a knowledgeable book guide. Help users explore, understand, and navigate the content of their uploaded documents. Reference specific sections when helpful.',
+  custom: '',
 }

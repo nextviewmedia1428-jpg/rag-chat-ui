@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { conversation_id, message, persona = 'assistant' } = await req.json()
+  const { conversation_id, message, persona = 'assistant', system_prompt, knowledge_base } = await req.json()
   if (!conversation_id || !message?.trim()) {
     return NextResponse.json({ error: 'conversation_id and message required' }, { status: 400 })
   }
@@ -59,9 +59,10 @@ export async function POST(req: NextRequest) {
   }
   const context = contextParts.join('\n\n===\n\n')
 
-  const systemPrompt = `${PERSONA_PROMPTS[persona as Persona] ?? PERSONA_PROMPTS.assistant}
-
-${context ? `Relevant context from the user's uploaded documents:\n\n${context}\n\nAnswer based on this context. If the context doesn't contain the answer, say so honestly.` : 'No documents have been uploaded yet. Let the user know they can upload PDFs to get document-grounded answers.'}`
+  const basePrompt = (system_prompt?.trim()) || PERSONA_PROMPTS[persona as Persona] || PERSONA_PROMPTS.assistant
+  const kbSection = knowledge_base?.trim() ? `\n\n## Built-in Knowledge Base\n${knowledge_base}` : ''
+  const contextSection = context ? `\n\n## Uploaded Document Context\n${context}` : ''
+  const systemPrompt = `${basePrompt}${kbSection}${contextSection}${!context && !knowledge_base ? '\n\nNo documents have been uploaded yet. Let the user know they can upload PDFs to get document-grounded answers.' : ''}`
 
   const messages = [
     ...(history ?? []).map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),

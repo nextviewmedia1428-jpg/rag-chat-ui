@@ -6,11 +6,13 @@ import { Message, Persona } from '@/lib/types'
 interface UseChatOptions {
   conversationId: string
   persona: Persona
+  systemPrompt?: string
+  knowledgeBase?: string
   initialMessages?: Message[]
   onTokensUpdate?: (remaining: number) => void
 }
 
-export function useChat({ conversationId, persona, initialMessages = [], onTokensUpdate }: UseChatOptions) {
+export function useChat({ conversationId, persona, systemPrompt, knowledgeBase, initialMessages = [], onTokensUpdate }: UseChatOptions) {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -31,7 +33,7 @@ export function useChat({ conversationId, persona, initialMessages = [], onToken
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversation_id: conversationId, message: content, persona }),
+        body: JSON.stringify({ conversation_id: conversationId, message: content, persona, system_prompt: systemPrompt, knowledge_base: knowledgeBase }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -52,7 +54,7 @@ export function useChat({ conversationId, persona, initialMessages = [], onToken
     } finally {
       setIsLoading(false)
     }
-  }, [conversationId, persona, onTokensUpdate])
+  }, [conversationId, persona, systemPrompt, knowledgeBase, onTokensUpdate])
 
   return { messages, isLoading, error, sendMessage }
 }

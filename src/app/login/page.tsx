@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
@@ -7,6 +8,11 @@ import { useAuth } from '@/components/AuthProvider'
 export default function LoginPage() {
   const { signIn, signUp } = useAuth()
   const router = useRouter()
+
+  useEffect(() => {
+    const url = process.env.NEXT_PUBLIC_LIGHTRAG_URL
+    if (url) fetch(url + '/').catch(() => {})
+  }, [])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
