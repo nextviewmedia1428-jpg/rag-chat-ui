@@ -20,6 +20,13 @@ export function ChatWindow({ conversationId, persona, initialMessages = [] }: Pr
   const bottomRef = useRef<HTMLDivElement>(null)
   const [tokensRemaining, setTokensRemaining] = useState(DAILY_LIMIT)
   const { systemPrompt, knowledgeBase } = useChatContext()
+
+  useEffect(() => {
+    fetch('/api/tokens')
+      .then(r => r.json())
+      .then(d => { if (typeof d.remaining === 'number') setTokensRemaining(d.remaining) })
+      .catch(() => {})
+  }, [])
   const { messages, isLoading, error, sendMessage } = useChat({
     conversationId,
     persona,

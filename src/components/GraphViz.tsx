@@ -41,18 +41,24 @@ const PLACEHOLDER_EDGES: GEdge[] = [
 ]
 
 export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
-  const canvasRef  = useRef<HTMLCanvasElement>(null)
-  const animRef    = useRef(0)
-  const pulseRef   = useRef(0)
-  const mouseRef   = useRef({ x: -9999, y: -9999 })
-  const posRef     = useRef<Map<string, { x: number; y: number; vx: number; vy: number }>>(new Map())
-  const nodesRef   = useRef<GNode[]>(PLACEHOLDER_NODES)
-  const edgesRef   = useRef<GEdge[]>(PLACEHOLDER_EDGES)
-  const hoveredRef = useRef<string | null>(null)
+  const canvasRef    = useRef<HTMLCanvasElement>(null)
+  const animRef      = useRef(0)
+  const pulseRef     = useRef(0)
+  const mouseRef     = useRef({ x: -9999, y: -9999 })
+  const posRef       = useRef<Map<string, { x: number; y: number; vx: number; vy: number }>>(new Map())
+  const nodesRef     = useRef<GNode[]>(PLACEHOLDER_NODES)
+  const edgesRef     = useRef<GEdge[]>(PLACEHOLDER_EDGES)
+  const hoveredRef   = useRef<string | null>(null)
+  // ← live ref so the animation loop always reads the latest activated set
+  const activatedRef = useRef<Set<string>>(new Set())
+
   const [tooltip, setTooltip] = useState<Tooltip | null>(null)
   const [loaded, setLoaded]   = useState(false)
 
-  const activatedSet = new Set(activatedIds.map(s => s.toLowerCase()))
+  // Keep activatedRef in sync with prop — no re-render, no stale closure
+  useEffect(() => {
+    activatedRef.current = new Set(activatedIds.map(s => s.toLowerCase()))
+  }, [activatedIds])
 
   // ── Fetch real graph ─────────────────────────────────────
   useEffect(() => {
@@ -71,7 +77,6 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
           degMap.set(e.target, (degMap.get(e.target) ?? 0) + 1)
         })
 
-        // top 50 by degree
         const topIds = new Set(
           [...degMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 50).map(([id]) => id)
         )
@@ -102,17 +107,25 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    // Store logical size separately for drawing coordinates
+    let logW = 0, logH = 0
+
     const setup = () => {
-      canvas.width  = canvas.offsetWidth
-      canvas.height = canvas.offsetHeight
-      const W = canvas.width, H = canvas.height
+      const dpr = window.devicePixelRatio || 1
+      logW = canvas.offsetWidth
+      logH = canvas.offsetHeight
+      // Physical pixels = logical × dpr → crisp on retina
+      canvas.width  = logW * dpr
+      canvas.height = logH * dpr
+      ctx.scale(dpr, dpr)
+
       nodesRef.current.forEach((n, i) => {
         if (!posRef.current.has(n.id)) {
           const a = (i / nodesRef.current.length) * Math.PI * 2
-          const r = Math.min(W, H) * 0.3
+          const r = Math.min(logW, logH) * 0.3
           posRef.current.set(n.id, {
-            x: W / 2 + Math.cos(a) * r * (0.5 + Math.random() * 0.5),
-            y: H / 2 + Math.sin(a) * r * (0.5 + Math.random() * 0.5),
+            x: logW / 2 + Math.cos(a) * r * (0.5 + Math.random() * 0.5),
+            y: logH / 2 + Math.sin(a) * r * (0.5 + Math.random() * 0.5),
             vx: 0, vy: 0,
           })
         }
@@ -122,22 +135,18 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
     window.addEventListener('resize', setup)
 
     const tick = () => {
-      const allNodes = nodesRef.current
-      const allEdges = edgesRef.current
-      const pos      = posRef.current
-      const W        = canvas.width
-      const H        = canvas.height
+      const allNodes  = nodesRef.current
+      const allEdges  = edgesRef.current
+      const pos       = posRef.current
+      const activated = activatedRef.current   // ← always fresh
       pulseRef.current += 0.025
 
-      // Decide what to display
-      const isFiltered = activatedSet.size > 0
-      const displayNodes = isFiltered
-        ? allNodes.filter(n => activatedSet.has(n.id.toLowerCase()))
-        : allNodes
-      const displaySet = new Set(displayNodes.map(n => n.id))
+      const isFiltered   = activated.size > 0
+      const displayNodes = isFiltered ? allNodes.filter(n => activated.has(n.id.toLowerCase())) : allNodes
+      const displaySet   = new Set(displayNodes.map(n => n.id))
       const displayEdges = allEdges.filter(e => displaySet.has(e.source) && displaySet.has(e.target))
 
-      // — Physics on ALL nodes (keeps positions stable when toggling) —
+      // — Physics on ALL nodes (positions stay stable when filter toggles) —
       allNodes.forEach(a => {
         const pa = pos.get(a.id); if (!pa) return
         allNodes.forEach(b => {
@@ -148,8 +157,8 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
           const f  = 500 / (d * d)
           pa.vx += (dx / d) * f; pa.vy += (dy / d) * f
         })
-        pa.vx += (W / 2 - pa.x) * 0.005
-        pa.vy += (H / 2 - pa.y) * 0.005
+        pa.vx += (logW / 2 - pa.x) * 0.005
+        pa.vy += (logH / 2 - pa.y) * 0.005
       })
       allEdges.forEach(e => {
         const ps = pos.get(e.source), pt = pos.get(e.target)
@@ -163,12 +172,12 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
       allNodes.forEach(n => {
         const p = pos.get(n.id); if (!p) return
         p.vx *= 0.86; p.vy *= 0.86
-        p.x = Math.max(28, Math.min(W - 28, p.x + p.vx))
-        p.y = Math.max(28, Math.min(H - 28, p.y + p.vy))
+        p.x = Math.max(28, Math.min(logW - 28, p.x + p.vx))
+        p.y = Math.max(28, Math.min(logH - 28, p.y + p.vy))
       })
 
       // — Draw —
-      ctx.clearRect(0, 0, W, H)
+      ctx.clearRect(0, 0, logW, logH)
 
       // Edges
       displayEdges.forEach(e => {
@@ -177,15 +186,15 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
         ctx.beginPath()
         ctx.moveTo(ps.x, ps.y)
         ctx.lineTo(pt.x, pt.y)
-        ctx.strokeStyle = isFiltered ? 'rgba(255,255,255,0.45)' : 'rgba(200,200,200,0.14)'
+        ctx.strokeStyle = isFiltered ? 'rgba(255,255,255,0.45)' : 'rgba(200,200,200,0.13)'
         ctx.lineWidth   = isFiltered ? 1.2 : 0.8
         ctx.stroke()
 
-        // Relation label on filtered view
+        // Relation label in filtered mode
         if (isFiltered && e.label) {
           const mx = (ps.x + pt.x) / 2, my = (ps.y + pt.y) / 2
-          ctx.font = '8px system-ui'
-          ctx.fillStyle = 'rgba(150,220,210,0.7)'
+          ctx.font      = '8px system-ui'
+          ctx.fillStyle = 'rgba(150,220,210,0.75)'
           ctx.textAlign = 'center'
           ctx.fillText(e.label, mx, my - 3)
         }
@@ -202,9 +211,9 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
       if (newHovered !== hoveredRef.current) {
         hoveredRef.current = newHovered
         if (newHovered) {
-          const p = pos.get(newHovered)!
+          const p    = pos.get(newHovered)!
           const node = displayNodes.find(n => n.id === newHovered)!
-          setTooltip({ x: p.x, y: p.y, flip: p.x > W * 0.65, node })
+          setTooltip({ x: p.x, y: p.y, flip: p.x > logW * 0.65, node })
         } else {
           setTooltip(null)
         }
@@ -212,17 +221,16 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
 
       // Nodes
       displayNodes.forEach((n, i) => {
-        const p = pos.get(n.id); if (!p) return
-        const isHovered  = n.id === hoveredRef.current
-        const pulse      = Math.sin(pulseRef.current + i * 0.5) * 0.5 + 0.5
-        // radius: bigger for high-degree nodes, bigger still when filtered
-        const baseR = isFiltered
+        const p        = pos.get(n.id); if (!p) return
+        const isHov    = n.id === hoveredRef.current
+        const pulse    = Math.sin(pulseRef.current + i * 0.5) * 0.5 + 0.5
+        const baseR    = isFiltered
           ? Math.max(5, Math.min(10, 4 + n.degree * 0.6))
           : Math.max(2.5, Math.min(7, 2 + n.degree * 0.45))
-        const r = isHovered ? baseR + 2 : baseR
+        const r = isHov ? baseR + 2 : baseR
 
-        // Glow for activated / hovered
-        if (isFiltered || isHovered) {
+        // Glow
+        if (isFiltered || isHov) {
           const glowR = r + 10 + pulse * 6
           const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR)
           g.addColorStop(0, `rgba(255,255,255,${0.18 + pulse * 0.12})`)
@@ -231,23 +239,22 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
           ctx.fillStyle = g; ctx.fill()
         }
 
-        // Node dot
+        // Dot
         ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2)
-        ctx.fillStyle = isFiltered || n.degree >= 4
+        ctx.fillStyle = (isFiltered || n.degree >= 4)
           ? `rgba(255,255,255,${0.88 + pulse * 0.12})`
           : `rgba(180,180,180,${0.55 + pulse * 0.1})`
         ctx.fill()
 
-        // Label — always on filtered view; on full view only for high-degree nodes
-        const showLabel = isFiltered || n.degree >= 4 || isHovered
+        // Label
+        const showLabel = isFiltered || n.degree >= 4 || isHov
         if (showLabel) {
-          const fontSize = isFiltered ? 11 : Math.max(9, Math.min(12, 8 + n.degree * 0.4))
-          ctx.font = `${isFiltered ? '500 ' : ''}${fontSize}px system-ui, sans-serif`
-          ctx.textAlign = 'center'
-          // subtle shadow so label is readable over edges
-          ctx.shadowColor = 'rgba(0,0,0,0.9)'
-          ctx.shadowBlur  = 6
-          ctx.fillStyle   = isFiltered ? 'rgba(255,255,255,0.95)' : 'rgba(210,210,210,0.85)'
+          const fs = isFiltered ? 11 : Math.max(9, Math.min(12, 8 + n.degree * 0.4))
+          ctx.font        = `${isFiltered ? '500 ' : ''}${fs}px system-ui, sans-serif`
+          ctx.textAlign   = 'center'
+          ctx.shadowColor = 'rgba(0,0,0,0.95)'
+          ctx.shadowBlur  = 7
+          ctx.fillStyle   = isFiltered ? 'rgba(255,255,255,0.95)' : 'rgba(215,215,215,0.85)'
           ctx.fillText(n.id, p.x, p.y - r - 5)
           ctx.shadowBlur  = 0
         }
@@ -258,12 +265,11 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
 
     animRef.current = requestAnimationFrame(tick)
     return () => { cancelAnimationFrame(animRef.current); window.removeEventListener('resize', setup) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded])
+  }, [loaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const onMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const r = canvasRef.current?.getBoundingClientRect(); if (!r) return
-    mouseRef.current = { x: e.clientX - r.left, y: e.clientY - r.top }
+    const rect = canvasRef.current?.getBoundingClientRect(); if (!rect) return
+    mouseRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
   }
   const onMouseLeave = () => {
     mouseRef.current = { x: -9999, y: -9999 }
@@ -276,11 +282,11 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
       <canvas
         ref={canvasRef}
         className="w-full h-full cursor-crosshair"
+        style={{ imageRendering: 'pixelated' }}
         onMouseMove={onMouseMove}
         onMouseLeave={onMouseLeave}
       />
 
-      {/* Tooltip */}
       {tooltip && (
         <div
           className="absolute pointer-events-none z-20"
@@ -305,13 +311,11 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
         </div>
       )}
 
-      {/* State label */}
-      <div className="absolute bottom-2.5 left-3 flex items-center gap-3">
-        {activatedIds.length > 0 ? (
-          <span className="text-[9px] text-white/50 font-mono">{activatedIds.length} nodes · last query subgraph</span>
-        ) : (
-          <span className="text-[9px] text-white/20 font-mono">full knowledge graph · ask a question to focus</span>
-        )}
+      <div className="absolute bottom-2.5 left-3">
+        {activatedIds.length > 0
+          ? <span className="text-[9px] text-white/40 font-mono">{activatedIds.length} nodes · last query subgraph</span>
+          : <span className="text-[9px] text-white/20 font-mono">full knowledge graph · ask a question to focus</span>
+        }
       </div>
     </div>
   )
