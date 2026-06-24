@@ -42,14 +42,16 @@ export async function POST(req: NextRequest) {
   // Save user message
   await admin.from('messages').insert({ conversation_id, role: 'user', content: message })
 
-  // Dual retrieval — run in parallel
-  const [semanticResults, lightragResult] = await Promise.allSettled([
+  // Dual retrieval — run in parallel (text + entities + semantic)
+  const [semanticResults, lightragResult, lightragEntitiesResult] = await Promise.allSettled([
     semanticSearch(message, user.id, admin),
     lightragQuery(message),
+    lightragQueryData(message),
   ])
 
   const semanticContext = semanticResults.status === 'fulfilled' ? semanticResults.value : []
   const lightragContext = lightragResult.status === 'fulfilled' ? lightragResult.value : ''
+  const lightragEntities = lightragEntitiesResult.status === 'fulfilled' ? lightragEntitiesResult.value : []
 
   // Merge context (deduplicate similar chunks)
   const contextParts: string[] = []
@@ -92,6 +94,11 @@ export async function POST(req: NextRequest) {
     reply,
     tokens_used: tokensUsed,
     tokens_remaining: Math.max(0, DAILY_TOKEN_LIMIT - (usage?.tokens ?? 0) - tokensUsed),
+    sources: {
+      graphrag: lightragContext,
+      graphrag_entities: lightragEntities,
+      semantic: semanticContext,
+    },
   })
 }
 
@@ -108,6 +115,39 @@ async function semanticSearch(query: string, userId: string, admin: ReturnType<t
     match_count: 5,
   })
   return (data ?? []).map((r: { content: string }) => r.content)
+}
+
+interface LightragEntity {
+  entity_name: string
+  entity_type: string
+  description: string
+  file_path?: string
+}
+
+async function lightragQueryData(query: string): Promise<LightragEntity[]> {
+  if (!LIGHTRAG_URL) return []
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 8000)
+  try {
+    const res = await fetch(`${LIGHTRAG_URL}/query/data`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, mode: 'hybrid', top_k: 8 }),
+      signal: controller.signal,
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data?.data?.entities ?? []).map((e: LightragEntity) => ({
+      entity_name: e.entity_name,
+      entity_type: e.entity_type,
+      description: (e.description ?? '').split('<SEP>')[0].slice(0, 150),
+      file_path: (e.file_path ?? '').split('<SEP>')[0],
+    }))
+  } catch {
+    return []
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 async function lightragQuery(query: string): Promise<string> {

@@ -36,7 +36,7 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
   if (!user) return null
 
   return (
-    <ChatContext.Provider value={{ systemPrompt, setSystemPrompt, knowledgeBase, setKnowledgeBase }}>
+    <ChatContext.Provider value={{ systemPrompt, setSystemPrompt, knowledgeBase, setKnowledgeBase, lastSources: null, setLastSources: () => {} }}>
       <div className="flex h-screen overflow-hidden">
         <Sidebar
           persona={persona}

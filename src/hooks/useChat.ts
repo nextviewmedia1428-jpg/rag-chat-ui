@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { Message, Persona } from '@/lib/types'
+import { useChatContext } from '@/lib/chat-context'
 
 interface UseChatOptions {
   conversationId: string
@@ -16,6 +17,7 @@ export function useChat({ conversationId, persona, systemPrompt, knowledgeBase, 
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { setLastSources } = useChatContext()
 
   const sendMessage = useCallback(async (content: string) => {
     setError(null)
@@ -49,6 +51,7 @@ export function useChat({ conversationId, persona, systemPrompt, knowledgeBase, 
       }
       setMessages(prev => [...prev, assistantMsg])
       if (onTokensUpdate) onTokensUpdate(data.tokens_remaining)
+      if (data.sources) setLastSources(data.sources)
     } catch {
       setError('Network error. Please try again.')
     } finally {
