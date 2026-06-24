@@ -164,7 +164,7 @@ export default function HomePage() {
             <div
               className="relative h-[540px] rounded-2xl overflow-hidden border border-white/10"
               style={{
-                backgroundImage: 'url(/images/hero-visual.jpg)',
+                backgroundImage: 'url(/images/hero-visual.png)',
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 background: 'linear-gradient(135deg, #0d1f2d 0%, #0a1628 60%, #061a1f 100%)',
@@ -325,7 +325,7 @@ export default function HomePage() {
               <div
                 className="h-52 rounded-2xl overflow-hidden border border-white/[0.08] relative"
                 style={{
-                  backgroundImage: 'url(/images/discovery.jpg)',
+                  backgroundImage: 'url(/images/discovery.png)',
                   backgroundSize: 'cover', backgroundPosition: 'center',
                   background: 'linear-gradient(135deg, #0f1f2d 0%, #0d1a20 100%)',
                 }}
@@ -494,7 +494,7 @@ export default function HomePage() {
               <div
                 className="relative h-[480px] rounded-2xl overflow-hidden border border-white/10"
                 style={{
-                  backgroundImage: 'url(/images/builder.jpg)',
+                  backgroundImage: 'url(/images/builder.png)',
                   backgroundSize: 'cover', backgroundPosition: 'top center',
                   background: 'linear-gradient(135deg, #0d1f2d 0%, #081520 100%)',
                 }}
