@@ -3,13 +3,19 @@ import OpenAI from 'openai'
 import { PERSONAS } from '@/lib/personas'
 import { createAdminClient } from '@/lib/supabase-server'
 
-const openai  = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-const LR      = process.env.LIGHTRAG_URL
-const DEMO_ID = process.env.DEMO_USER_ID
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+const LR     = process.env.LIGHTRAG_URL
 
 export async function POST(req: NextRequest) {
+  // Read env var per-request so it's never stale from a cold-start snapshot
+  const DEMO_ID = process.env.DEMO_USER_ID
+
   const { message, persona = 'customer-support', history = [] } = await req.json()
   if (!message?.trim()) return NextResponse.json({ error: 'message required' }, { status: 400 })
+
+  console.log('\n═══ DEMO-CHAT REQUEST ═══')
+  console.log('Query   :', message)
+  console.log('DEMO_ID :', DEMO_ID ?? '❌ NOT SET')
 
   const def = PERSONAS[persona] ?? PERSONAS['customer-support']
   const resolvedPrompt = def.promptTemplate.replace(/\{\{(\w+)\}\}/g, (_, k) => def.variables[k] ?? k)
@@ -18,26 +24,30 @@ export async function POST(req: NextRequest) {
   let pgvectorChunks: string[] = []
   let lightragText = ''
 
-  if (DEMO_ID) {
+  if (!DEMO_ID) {
+    console.log('⚠️  DEMO_ID missing — skipping RAG, using embedded KB')
+  } else {
+    console.log('▶ Running pgvector + LightRAG in parallel…')
     const [pgResult, lrResult] = await Promise.allSettled([
-      queryPgvector(message),
+      queryPgvector(message, DEMO_ID),
       queryLightrag(message),
     ])
+
+    if (pgResult.status === 'rejected') console.error('pgvector threw:', pgResult.reason)
+    if (lrResult.status === 'rejected') console.error('LightRAG threw:', lrResult.reason)
 
     pgRaw          = pgResult.status === 'fulfilled' ? pgResult.value : []
     lightragText   = lrResult.status === 'fulfilled' ? lrResult.value : ''
     pgvectorChunks = pgRaw.map(r => r.content)
 
-    console.log('\n═══ DEMO-CHAT RETRIEVAL ═══')
-    console.log('Query:', message)
-    console.log(`\n── pgvector (threshold ≥0.5, top ${pgRaw.length} matched) ──`)
+    console.log(`\n── pgvector → ${pgRaw.length} chunks after threshold filter ──`)
     if (pgRaw.length === 0) {
-      console.log('  (no chunks above threshold)')
+      console.log('  (zero chunks — RPC error above, or all similarities below threshold)')
     } else {
-      pgRaw.forEach((r, i) => console.log(`  [${i + 1}] similarity=${r.similarity} — ${r.content.slice(0, 180)}…`))
+      pgRaw.forEach((r, i) => console.log(`  [${i + 1}] sim=${r.similarity} — ${r.content.slice(0, 150)}…`))
     }
-    console.log('\n── LightRAG (mix, top_k=5) ──')
-    console.log(lightragText.slice(0, 600) || '  (empty — Render cold or no graph)')
+    console.log(`\n── LightRAG → ${lightragText.length} chars ──`)
+    console.log(lightragText.slice(0, 300) || '  (empty)')
     console.log('═══════════════════════════\n')
   }
 
@@ -78,22 +88,38 @@ Keep answers concise and grounded in the knowledge base above. This is a live de
   }
 }
 
-async function queryPgvector(query: string): Promise<{ content: string; similarity: number }[]> {
+async function queryPgvector(query: string, userId: string): Promise<{ content: string; similarity: number }[]> {
+  console.log('  [pgvector] embedding query…')
   const admin = createAdminClient()
   const embRes = await openai.embeddings.create({ model: 'text-embedding-3-small', input: query })
+  console.log(`  [pgvector] embedding done (${embRes.data[0].embedding.length}d), calling match_chunks for user ${userId}…`)
+
   const { data, error } = await admin.rpc('match_chunks', {
     query_embedding: embRes.data[0].embedding,
-    filter_user_id: DEMO_ID,
-    match_count: 10,   // fetch more, filter below
+    filter_user_id: userId,
+    match_count: 10,
   })
-  if (error) { console.error('pgvector error:', error.message); return [] }
-  return (data ?? [])
+
+  if (error) {
+    console.error('  [pgvector] RPC ERROR:', error.message)
+    return []
+  }
+
+  console.log(`  [pgvector] RPC returned ${(data ?? []).length} raw rows`)
+  ;(data ?? []).forEach((r: { similarity: number; content: string }, i: number) =>
+    console.log(`    raw[${i}] sim=${Math.round(r.similarity * 1000) / 1000} — ${r.content.slice(0, 80)}…`)
+  )
+
+  const filtered = (data ?? [])
     .map((r: { content: string; similarity: number }) => ({
       content: r.content,
       similarity: Math.round(r.similarity * 1000) / 1000,
     }))
-    .filter((r: { similarity: number }) => r.similarity >= 0.4)
+    .filter((r: { similarity: number }) => r.similarity >= 0.3)
     .slice(0, 5)
+
+  console.log(`  [pgvector] after threshold(0.3): ${filtered.length} chunks`)
+  return filtered
 }
 
 async function queryLightrag(query: string): Promise<string> {
