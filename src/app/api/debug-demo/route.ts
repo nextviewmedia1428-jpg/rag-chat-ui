@@ -1,49 +1,32 @@
 import { NextResponse } from 'next/server'
+import OpenAI from 'openai'
 import { createAdminClient } from '@/lib/supabase-server'
 
-export async function GET() {
-  const DEMO_ID = process.env.DEMO_USER_ID
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+const DEMO_ID = process.env.DEMO_USER_ID
 
-  if (!DEMO_ID) {
-    return NextResponse.json({ error: 'DEMO_USER_ID not set in env' })
-  }
+export async function GET(req: Request) {
+  if (!DEMO_ID) return NextResponse.json({ error: 'DEMO_USER_ID not set' })
 
   const admin = createAdminClient()
+  const { searchParams } = new URL(req.url)
+  const q = searchParams.get('q') ?? 'when was the company founded'
 
-  // Count chunks for this user
-  const { count, error: countErr } = await admin
-    .from('document_chunks')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', DEMO_ID)
-
-  // Get a sample chunk (no embedding, just text preview)
-  const { data: sample, error: sampleErr } = await admin
-    .from('document_chunks')
-    .select('id, content, user_id')
-    .eq('user_id', DEMO_ID)
-    .limit(2)
-
-  // List all distinct user_ids in the table (to verify which UUID has data)
-  const { data: users, error: usersErr } = await admin
-    .from('document_chunks')
-    .select('user_id')
-    .limit(200)
-
-  const distinctUsers = users
-    ? [...new Set(users.map((r: { user_id: string }) => r.user_id))]
-    : []
+  // Embed the test query and run match_chunks with NO threshold
+  const embRes = await openai.embeddings.create({ model: 'text-embedding-3-small', input: q })
+  const { data, error } = await admin.rpc('match_chunks', {
+    query_embedding: embRes.data[0].embedding,
+    filter_user_id: DEMO_ID,
+    match_count: 10,
+  })
 
   return NextResponse.json({
     demo_user_id: DEMO_ID,
-    chunks_for_demo_user: count ?? 0,
-    count_error: countErr?.message ?? null,
-    sample_error: sampleErr?.message ?? null,
-    sample: (sample ?? []).map((r: { id: string; content: string; user_id: string }) => ({
-      id: r.id,
-      user_id: r.user_id,
+    query: q,
+    rpc_error: error?.message ?? null,
+    results: (data ?? []).map((r: { content: string; similarity: number }) => ({
+      similarity: Math.round(r.similarity * 1000) / 1000,
       content_preview: r.content.slice(0, 120),
     })),
-    all_user_ids_in_table: distinctUsers,
-    users_error: usersErr?.message ?? null,
   })
 }
