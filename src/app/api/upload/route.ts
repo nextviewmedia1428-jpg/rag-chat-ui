@@ -155,5 +155,11 @@ export async function GET(req: NextRequest) {
     .single()
 
   if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json(data)
+
+  const { count } = await admin
+    .from('document_chunks')
+    .select('id', { count: 'exact', head: true })
+    .eq('document_id', docId)
+
+  return NextResponse.json({ ...data, chunk_count: count ?? 0 })
 }

@@ -4,28 +4,29 @@ import { useEffect, useRef } from 'react'
 /* ── Node definitions ───────────────────────────────────────────── */
 const DEFS = [
   // label, color, "r,g,b", focusSections[], baseRadius, baseSize
-  ['HR Docs',          '#1A6B3C', '26,107,60',   [0,2,3],   135, 4.5],
-  ['IT Runbook',       '#FF4D3D', '255,77,61',   [0,2,3],   185, 4.0],
-  ['Customer FAQ',     '#E8A020', '232,160,32',  [0,2,3],   162, 4.0],
-  ['Sales Guide',      '#7DAF8B', '125,175,139', [0,2,3,4], 205, 4.0],
-  ['Finance',          '#1A6B3C', '26,107,60',   [0],       118, 3.5],
-  ['Product Specs',    '#FF4D3D', '255,77,61',   [0],       225, 3.0],
-  ['Policies',         '#E8A020', '232,160,32',  [0],       150, 3.0],
-  ['Upload Docs',      '#E8A020', '232,160,32',  [1],       142, 5.0],
-  ['Knowledge Graph',  '#1A6B3C', '26,107,60',   [1],       125, 5.5],
-  ['Query',            '#FF4D3D', '255,77,61',   [1,3],     168, 4.5],
-  ['Entities',         '#7DAF8B', '125,175,139', [1],       192, 3.5],
-  ['Relations',        '#E8A020', '232,160,32',  [1],       228, 3.0],
-  ['WhatsApp',         '#7DAF8B', '125,175,139', [5],       148, 5.0],
-  ['Voice Agent',      '#1A6B3C', '26,107,60',   [5],       182, 4.5],
-  ['Web Chat',         '#E8A020', '232,160,32',  [5],       162, 4.0],
-  ['Slack',            '#FF4D3D', '255,77,61',   [5],       208, 4.0],
-  ['Email',            '#7DAF8B', '125,175,139', [5],       238, 3.5],
-  ['Customer Support', '#1A6B3C', '26,107,60',   [4],       142, 5.0],
-  ['HR Onboarding',    '#E8A020', '232,160,32',  [4],       175, 4.5],
-  ['IT Helpdesk',      '#FF4D3D', '255,77,61',   [4],       128, 5.0],
-  ['Sales Intel',      '#7DAF8B', '125,175,139', [4,3],     198, 4.0],
-  ['CRM',              '#7DAF8B', '125,175,139', [5,3],     242, 3.5],
+  // Larger radii = nodes spread across the full screen; zoom range is (1.6 → 0.4) for drama
+  ['HR Docs',          '#1A6B3C', '26,107,60',   [0,2,3],   210, 5.0],
+  ['IT Runbook',       '#FF4D3D', '255,77,61',   [0,2,3],   290, 4.5],
+  ['Customer FAQ',     '#E8A020', '232,160,32',  [0,2,3],   255, 4.5],
+  ['Sales Guide',      '#7DAF8B', '125,175,139', [0,2,3,4], 320, 4.5],
+  ['Finance',          '#1A6B3C', '26,107,60',   [0],       185, 4.0],
+  ['Product Specs',    '#FF4D3D', '255,77,61',   [0],       355, 3.5],
+  ['Policies',         '#E8A020', '232,160,32',  [0],       235, 3.5],
+  ['Upload Docs',      '#E8A020', '232,160,32',  [1],       220, 5.5],
+  ['Knowledge Graph',  '#1A6B3C', '26,107,60',   [1],       195, 6.0],
+  ['Query',            '#FF4D3D', '255,77,61',   [1,3],     260, 5.0],
+  ['Entities',         '#7DAF8B', '125,175,139', [1],       300, 4.0],
+  ['Relations',        '#E8A020', '232,160,32',  [1],       355, 3.5],
+  ['WhatsApp',         '#7DAF8B', '125,175,139', [5],       230, 5.5],
+  ['Voice Agent',      '#1A6B3C', '26,107,60',   [5],       285, 5.0],
+  ['Web Chat',         '#E8A020', '232,160,32',  [5],       250, 4.5],
+  ['Slack',            '#FF4D3D', '255,77,61',   [5],       325, 4.5],
+  ['Email',            '#7DAF8B', '125,175,139', [5],       375, 4.0],
+  ['Customer Support', '#1A6B3C', '26,107,60',   [4],       220, 5.5],
+  ['HR Onboarding',    '#E8A020', '232,160,32',  [4],       275, 5.0],
+  ['IT Helpdesk',      '#FF4D3D', '255,77,61',   [4],       200, 5.5],
+  ['Sales Intel',      '#7DAF8B', '125,175,139', [4,3],     310, 4.5],
+  ['CRM',              '#7DAF8B', '125,175,139', [5,3],     380, 4.0],
 ] as const
 
 function lerp(a: number, b: number, t: number) { return a + (b - a) * t }
@@ -108,13 +109,13 @@ export function ScrollNodeCanvas() {
 
       for (const n of nodes) {
         // Focus factor target: hero = 0.4 for all, other sections = 1.0 if featured, 0.05 otherwise
-        const tgt = secIdx === 0 ? 0.4 : (n.focus.includes(secIdx) ? 1.0 : 0.05)
-        n.ff += (tgt - n.ff) * 0.04  // ponytail: slow lerp = smooth 'breathe'
+        const tgt = secIdx === 0 ? 0.38 : (n.focus.includes(secIdx) ? 1.0 : 0.04)
+        n.ff += (tgt - n.ff) * 0.055  // ponytail: slightly faster lerp = snappier zoom without jarring
 
         const ff  = n.ff
-        const eR  = n.bR  * lerp(1.1, 0.55, ff)   // orbit closer when focused
-        const eSz = n.bSz * lerp(0.65, 1.85, ff)   // larger when focused
-        const op  = lerp(0.1, 0.88, ff)
+        const eR  = n.bR  * lerp(1.6, 0.38, ff)   // unfocused drift far out, focused pull close
+        const eSz = n.bSz * lerp(0.5, 2.2, ff)     // focused nodes grow noticeably larger
+        const op  = lerp(0.06, 0.92, ff)
 
         const ang = n.angle + (rmo ? 0 : t * n.speed)
         const bob = Math.sin(t * n.bobF + n.phase) * n.bobA

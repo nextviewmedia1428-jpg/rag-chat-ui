@@ -17,14 +17,14 @@ export default function UploadPage() {
   if (!user) return null
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-8">
+    <div className="min-h-screen flex flex-col items-center justify-center p-8">
       <div className="w-full max-w-lg">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Add Your Document</h1>
-            <p className="text-sm text-gray-500 mt-1">Upload a PDF — then chat with it instantly</p>
+            <Link href="/chat" className="font-mono text-[11px] text-[#6B5E52] hover:text-[#1C1510] transition mb-3 block">← Back to chat</Link>
+            <h1 className="font-serif text-[28px] text-[#1C1510]">Add a document</h1>
+            <p className="text-sm text-[#6B5E52] mt-1">Upload a PDF — your agent learns it instantly</p>
           </div>
-          <Link href="/chat" className="text-sm text-blue-600 hover:underline">← Back to chat</Link>
         </div>
         <FileUpload />
       </div>

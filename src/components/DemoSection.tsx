@@ -50,7 +50,10 @@ export function DemoSection() {
   const [tab, setTab]       = useState<'chat' | 'graph'>('chat')
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, loading])
+  useEffect(() => {
+    if (messages.length === 0) return
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, loading])
   useEffect(() => { setMessages([]) }, [persona])
 
   async function send(text: string) {
