@@ -70,15 +70,15 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
         type RN = { id: string; properties?: { entity_type?: string; description?: string; file_path?: string } }
         type RE = { source: string; target: string; properties?: { keywords?: string } }
 
+        // Degree already computed server-side; recalculate client-side for radius sizing
         const deg = new Map<string, number>()
         ;(data.nodes as RN[]).forEach(n => deg.set(n.id, 0))
         ;(data.edges as RE[] ?? []).forEach(e => {
           deg.set(e.source, (deg.get(e.source) ?? 0) + 1)
           deg.set(e.target, (deg.get(e.target) ?? 0) + 1)
         })
-        const top = new Set([...deg.entries()].sort((a, b) => b[1] - a[1]).slice(0, 50).map(([id]) => id))
 
-        nodesRef.current = (data.nodes as RN[]).filter(n => top.has(n.id)).map(n => ({
+        nodesRef.current = (data.nodes as RN[]).map(n => ({
           id: n.id,
           type: n.properties?.entity_type ?? 'concept',
           description: (n.properties?.description ?? '').split('<SEP>').join('\n\n'),
@@ -86,7 +86,6 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
           degree: deg.get(n.id) ?? 0,
         }))
         edgesRef.current = (data.edges as RE[] ?? [])
-          .filter(e => top.has(e.source) && top.has(e.target))
           .map(e => ({ source: e.source, target: e.target, label: e.properties?.keywords ?? '' }))
 
         posRef.current.clear()
