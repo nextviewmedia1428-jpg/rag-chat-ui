@@ -56,7 +56,7 @@ export function DemoSection() {
   const [loading, setLoading] = useState(false)
   const [persona, setPersona] = useState('abc-general-secretary')
   const [activatedIds, setActivatedIds] = useState<string[]>([])
-  const [pgvectorChunks, setPgvectorChunks] = useState<string[]>([])
+  const [pgvectorChunks, setPgvectorChunks] = useState<{ content: string; similarity: number }[]>([])
   const [lightragText, setLightragText]     = useState<string>('')
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
@@ -290,10 +290,15 @@ export function DemoSection() {
                       <p className="text-[10px] text-[#6B5E52] italic px-1">No chunks matched — DEMO_USER_ID not set or no docs uploaded.</p>
                     ) : (
                       <div className="space-y-2">
-                        {pgvectorChunks.map((c, i) => (
+                        {pgvectorChunks.map((r, i) => (
                           <div key={i} className="rounded-xl border border-[#F1EDE5] bg-[#FAF7F2] p-2.5">
-                            <div className="text-[9px] font-mono text-[#1A6B3C] mb-1">chunk {i + 1}</div>
-                            <p className="text-[10px] text-[#6B5E52] leading-relaxed line-clamp-5">{c}</p>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[9px] font-mono text-[#1A6B3C]">chunk {i + 1}</span>
+                              <span className="text-[9px] font-mono text-[#6B5E52] bg-[#EBF5EF] border border-[rgba(26,107,60,0.15)] rounded px-1.5 py-0.5">
+                                {(r.similarity * 100).toFixed(1)}% match
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-[#6B5E52] leading-relaxed line-clamp-5">{r.content}</p>
                           </div>
                         ))}
                       </div>

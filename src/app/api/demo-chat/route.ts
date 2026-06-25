@@ -23,15 +23,20 @@ export async function POST(req: NextRequest) {
       queryLightrag(message),
     ])
 
-    pgvectorChunks = pgResult.status === 'fulfilled' ? pgResult.value : []
+    const pgRaw    = pgResult.status === 'fulfilled' ? pgResult.value : []
     lightragText   = lrResult.status === 'fulfilled' ? lrResult.value : ''
+    pgvectorChunks = pgRaw.map(r => r.content)
 
     console.log('\n═══ DEMO-CHAT RETRIEVAL ═══')
     console.log('Query:', message)
-    console.log('\n── pgvector (top 5 semantic chunks) ──')
-    pgvectorChunks.forEach((c, i) => console.log(`[${i + 1}] ${c.slice(0, 200)}…`))
-    console.log('\n── LightRAG (GraphRAG mix) ──')
-    console.log(lightragText.slice(0, 600) || '(empty — Render cold or no graph)')
+    console.log(`\n── pgvector (threshold ≥0.5, top ${pgRaw.length} matched) ──`)
+    if (pgRaw.length === 0) {
+      console.log('  (no chunks above threshold)')
+    } else {
+      pgRaw.forEach((r, i) => console.log(`  [${i + 1}] similarity=${r.similarity} — ${r.content.slice(0, 180)}…`))
+    }
+    console.log('\n── LightRAG (mix, top_k=5) ──')
+    console.log(lightragText.slice(0, 600) || '  (empty — Render cold or no graph)')
     console.log('═══════════════════════════\n')
   }
 
@@ -64,7 +69,7 @@ Keep answers concise and grounded in the knowledge base above. This is a live de
     return NextResponse.json({
       reply: res.choices[0].message.content ?? '',
       source: ragContext ? 'rag' : 'embedded',
-      pgvectorChunks,
+      pgvectorChunks: pgRaw,   // [{ content, similarity }]
       lightragText,
     })
   } catch {
@@ -72,16 +77,20 @@ Keep answers concise and grounded in the knowledge base above. This is a live de
   }
 }
 
-async function queryPgvector(query: string): Promise<string[]> {
+async function queryPgvector(query: string): Promise<{ content: string; similarity: number }[]> {
   const admin = createAdminClient()
   const embRes = await openai.embeddings.create({ model: 'text-embedding-3-small', input: query })
   const { data, error } = await admin.rpc('match_chunks', {
     query_embedding: embRes.data[0].embedding,
     filter_user_id: DEMO_ID,
     match_count: 5,
+    match_threshold: 0.5,
   })
   if (error) { console.error('pgvector error:', error.message); return [] }
-  return (data ?? []).map((r: { content: string }) => r.content)
+  return (data ?? []).map((r: { content: string; similarity: number }) => ({
+    content: r.content,
+    similarity: Math.round(r.similarity * 1000) / 1000,
+  }))
 }
 
 async function queryLightrag(query: string): Promise<string> {

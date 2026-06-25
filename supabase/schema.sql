@@ -73,15 +73,17 @@ create policy "owner" on public.token_usage for all using (auth.uid() = user_id)
 
 -- VECTOR SEARCH FUNCTION
 create or replace function match_chunks(
-  query_embedding vector(1536),
-  filter_user_id  uuid,
-  match_count     int default 5
+  query_embedding  vector(1536),
+  filter_user_id   uuid,
+  match_count      int   default 5,
+  match_threshold  float default 0.5
 )
 returns table (content text, similarity float)
 language sql stable as $$
   select content, 1 - (embedding <=> query_embedding) as similarity
   from public.document_chunks
   where user_id = filter_user_id
+    and 1 - (embedding <=> query_embedding) >= match_threshold
   order by embedding <=> query_embedding
   limit match_count;
 $$;
