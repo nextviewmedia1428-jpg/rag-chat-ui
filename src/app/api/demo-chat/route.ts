@@ -84,14 +84,16 @@ async function queryPgvector(query: string): Promise<{ content: string; similari
   const { data, error } = await admin.rpc('match_chunks', {
     query_embedding: embRes.data[0].embedding,
     filter_user_id: DEMO_ID,
-    match_count: 5,
-    match_threshold: 0.5,
+    match_count: 10,   // fetch more, filter below
   })
   if (error) { console.error('pgvector error:', error.message); return [] }
-  return (data ?? []).map((r: { content: string; similarity: number }) => ({
-    content: r.content,
-    similarity: Math.round(r.similarity * 1000) / 1000,
-  }))
+  return (data ?? [])
+    .map((r: { content: string; similarity: number }) => ({
+      content: r.content,
+      similarity: Math.round(r.similarity * 1000) / 1000,
+    }))
+    .filter((r: { similarity: number }) => r.similarity >= 0.4)
+    .slice(0, 5)
 }
 
 async function queryLightrag(query: string): Promise<string> {
