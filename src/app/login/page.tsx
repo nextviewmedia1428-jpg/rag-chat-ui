@@ -3,8 +3,6 @@
 import { useEffect, useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
-import { HeroParticles } from '@/components/HeroParticles'
-
 export default function LoginPage() {
   const { signIn, signUp } = useAuth()
   const router = useRouter()
@@ -32,15 +30,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#020814] text-white flex items-center justify-center relative overflow-hidden">
-      {/* Particles bg */}
-      <div className="absolute inset-0 opacity-30">
-        <HeroParticles />
-      </div>
-      {/* Blue glow behind form */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[500px] h-[500px] rounded-full bg-[#4DA2FF]/5 blur-3xl" />
-      </div>
+    <div className="min-h-screen bg-transparent text-white flex items-center justify-center relative overflow-hidden">
 
       <div className="relative z-10 w-full max-w-sm px-6">
         {/* Logo */}

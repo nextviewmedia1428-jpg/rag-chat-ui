@@ -30,12 +30,30 @@ body {
   100% { stroke-dashoffset: 0; opacity: 0; }
 }
 
-@keyframes orbit-pulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+/* ── Aurora orb animations ── */
+@keyframes orb-1 {
+  0%   { transform: translate(0px, 0px) scale(1); }
+  33%  { transform: translate(120px, -80px) scale(1.08); }
+  66%  { transform: translate(-60px, 100px) scale(0.95); }
+  100% { transform: translate(0px, 0px) scale(1); }
 }
 
-@keyframes glow-ring {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(77, 162, 255, 0); }
-  50% { box-shadow: 0 0 0 8px rgba(77, 162, 255, 0.08); }
+@keyframes orb-2 {
+  0%   { transform: translate(0px, 0px) scale(1); }
+  33%  { transform: translate(-100px, 60px) scale(1.05); }
+  66%  { transform: translate(80px, -90px) scale(0.97); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+@keyframes orb-3 {
+  0%   { transform: translate(0px, 0px) scale(1); }
+  50%  { transform: translate(70px, -110px) scale(1.1); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+@keyframes orb-4 {
+  0%   { transform: translate(0px, 0px) scale(1); }
+  40%  { transform: translate(-90px, -60px) scale(1.06); }
+  80%  { transform: translate(50px, 80px) scale(0.94); }
+  100% { transform: translate(0px, 0px) scale(1); }
 }

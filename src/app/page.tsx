@@ -3,7 +3,6 @@
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { PERSONAS } from '@/lib/personas'
-import { HeroParticles } from '@/components/HeroParticles'
 import { DemoSection } from '@/components/DemoSection'
 
 const fade = { hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } } }
@@ -227,10 +226,6 @@ export default function HomePage() {
 
       {/* ─── HERO ─── */}
       <section className="relative min-h-screen flex items-center pt-20">
-        <div className="absolute inset-0">
-          <HeroParticles className="opacity-40" />
-        </div>
-        <div className="absolute inset-0 bg-gradient-to-r from-[#020814] via-[#020814]/85 to-[#020814]/30 pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#020814] via-transparent to-transparent pointer-events-none" />
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-10 py-24 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center w-full">
