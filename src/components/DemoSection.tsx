@@ -58,6 +58,7 @@ export function DemoSection() {
   const [activatedIds, setActivatedIds] = useState<string[]>([])
   const [pgvectorChunks, setPgvectorChunks] = useState<{ content: string; similarity: number }[]>([])
   const [lightragText, setLightragText]     = useState<string>('')
+  const [lightragLoading, setLightragLoading] = useState(false)
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
   // Scroll only the chat container (not the page) — fixes page-jump bug
@@ -85,7 +86,19 @@ export function DemoSection() {
       const reply = data.reply ?? 'Something went wrong. Try again.'
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
       if (data.pgvectorChunks) setPgvectorChunks(data.pgvectorChunks)
-      if (data.lightragText)   setLightragText(data.lightragText)
+
+      // LightRAG fetched separately — avoids Vercel 10s timeout
+      setLightragText('')
+      setLightragLoading(true)
+      fetch('/api/lightrag-query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: trimmed }),
+      })
+        .then(r => r.json())
+        .then(d => setLightragText(d.text ?? ''))
+        .catch(() => setLightragText(''))
+        .finally(() => setLightragLoading(false))
       const entities = [...new Set((reply.match(/\b[A-Z][A-Za-z0-9]*(?:[\s-][A-Z][A-Za-z0-9]*)*\b/g) ?? [])
         .filter((s: string) => s.length >= 3))]
       setActivatedIds(entities as string[])
@@ -311,7 +324,9 @@ export function DemoSection() {
                       <span className="text-[9px] font-mono text-white bg-[#E8A020] rounded px-1.5 py-0.5 uppercase">GraphRAG</span>
                       <span className="text-[9px] text-[#6B5E52]">LightRAG mix</span>
                     </div>
-                    {!lightragText ? (
+                    {lightragLoading ? (
+                      <p className="text-[10px] text-[#E8A020] italic px-1 animate-pulse">Querying knowledge graph…</p>
+                    ) : !lightragText ? (
                       <p className="text-[10px] text-[#6B5E52] italic px-1">No graph response — Render may be cold or graph empty.</p>
                     ) : (
                       <div className="rounded-xl border border-[#F1EDE5] bg-[#FDF6E6] p-2.5">

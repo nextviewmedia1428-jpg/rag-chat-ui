@@ -4,7 +4,6 @@ import { PERSONAS } from '@/lib/personas'
 import { createAdminClient } from '@/lib/supabase-server'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-const LR     = process.env.LIGHTRAG_URL
 
 export async function POST(req: NextRequest) {
   // Read env var per-request so it's never stale from a cold-start snapshot
@@ -22,39 +21,23 @@ export async function POST(req: NextRequest) {
 
   let pgRaw: { content: string; similarity: number }[] = []
   let pgvectorChunks: string[] = []
-  let lightragText = ''
 
   if (!DEMO_ID) {
     console.log('⚠️  DEMO_ID missing — skipping RAG, using embedded KB')
   } else {
-    console.log('▶ Running pgvector + LightRAG in parallel…')
-    const [pgResult, lrResult] = await Promise.allSettled([
-      queryPgvector(message, DEMO_ID),
-      queryLightrag(message),
-    ])
-
-    if (pgResult.status === 'rejected') console.error('pgvector threw:', pgResult.reason)
-    if (lrResult.status === 'rejected') console.error('LightRAG threw:', lrResult.reason)
-
-    pgRaw          = pgResult.status === 'fulfilled' ? pgResult.value : []
-    lightragText   = lrResult.status === 'fulfilled' ? lrResult.value : ''
+    // LightRAG runs client-side via /api/lightrag-query (avoids Vercel 10s timeout)
+    console.log('▶ Running pgvector…')
+    pgRaw          = await queryPgvector(message, DEMO_ID).catch(() => [])
     pgvectorChunks = pgRaw.map(r => r.content)
 
-    console.log(`\n── pgvector → ${pgRaw.length} chunks after threshold filter ──`)
-    if (pgRaw.length === 0) {
-      console.log('  (zero chunks — RPC error above, or all similarities below threshold)')
-    } else {
-      pgRaw.forEach((r, i) => console.log(`  [${i + 1}] sim=${r.similarity} — ${r.content.slice(0, 150)}…`))
-    }
-    console.log(`\n── LightRAG → ${lightragText.length} chars ──`)
-    console.log(lightragText.slice(0, 300) || '  (empty)')
+    console.log(`\n── pgvector → ${pgRaw.length} chunks ──`)
+    pgRaw.forEach((r, i) => console.log(`  [${i + 1}] sim=${r.similarity} — ${r.content.slice(0, 150)}…`))
     console.log('═══════════════════════════\n')
   }
 
-  const parts: string[] = []
-  if (lightragText)       parts.push(`[Graph RAG]\n${lightragText}`)
-  if (pgvectorChunks.length) parts.push(`[Semantic Search]\n${pgvectorChunks.join('\n\n---\n\n')}`)
-  const ragContext = parts.join('\n\n===\n\n')
+  const ragContext = pgvectorChunks.length
+    ? `[Semantic Search]\n${pgvectorChunks.join('\n\n---\n\n')}`
+    : ''
 
   const knowledgeSection = ragContext
     ? `\n\n## Knowledge Base (retrieved)\n${ragContext}`
@@ -81,7 +64,6 @@ Keep answers concise and grounded in the knowledge base above. This is a live de
       reply: res.choices[0].message.content ?? '',
       source: ragContext ? 'rag' : 'embedded',
       pgvectorChunks: pgRaw,   // [{ content, similarity }]
-      lightragText,
     })
   } catch {
     return NextResponse.json({ error: 'AI error' }, { status: 500 })
@@ -123,20 +105,3 @@ async function queryPgvector(query: string, userId: string): Promise<{ content: 
   return filtered
 }
 
-async function queryLightrag(query: string): Promise<string> {
-  if (!LR) return ''
-  try {
-    const res = await fetch(`${LR}/query`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, mode: 'mix', top_k: 5, response_type: 'Multiple Paragraphs' }),
-      signal: AbortSignal.timeout(10000),
-    })
-    if (!res.ok) { console.error('LightRAG query failed:', res.status); return '' }
-    const data = await res.json()
-    return data.response ?? data.result ?? ''
-  } catch (e) {
-    console.error('LightRAG timeout/error:', e)
-    return ''
-  }
-}
