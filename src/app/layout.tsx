@@ -6,8 +6,8 @@ import { AuthProvider } from "@/components/AuthProvider";
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "DocChat — Chat with your PDFs",
-  description: "Upload PDF documents and chat with an AI that knows your content",
+  title: "IKnowIt — One Agent. Knows It All.",
+  description: "Train one AI agent on all your documentation. It becomes the single source of truth your team actually uses.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

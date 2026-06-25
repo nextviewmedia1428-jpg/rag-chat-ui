@@ -72,11 +72,12 @@ export function HeroParticles({ className }: { className?: string }) {
           const dy = particles[i].y - particles[j].y
           const d = Math.sqrt(dx * dx + dy * dy)
           if (d < 140) {
-            const alpha = (1 - d / 140) * 0.28
+            const alpha = (1 - d / 140) * 0.22
             ctx.beginPath()
             ctx.moveTo(particles[i].x, particles[i].y)
             ctx.lineTo(particles[j].x, particles[j].y)
-            ctx.strokeStyle = `rgba(94, 234, 212, ${alpha})`
+            // electric blue lines
+            ctx.strokeStyle = `rgba(77, 162, 255, ${alpha})`
             ctx.lineWidth = 0.8
             ctx.stroke()
           }
@@ -86,8 +87,8 @@ export function HeroParticles({ className }: { className?: string }) {
       for (const p of particles) {
         const glow = Math.sin(tRef.current * 1.5 + p.pulse) * 0.3 + 0.7
         const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 5)
-        grad.addColorStop(0, `rgba(94, 234, 212, ${0.4 * glow})`)
-        grad.addColorStop(1, 'rgba(94, 234, 212, 0)')
+        grad.addColorStop(0, `rgba(77, 162, 255, ${0.35 * glow})`)
+        grad.addColorStop(1, 'rgba(77, 162, 255, 0)')
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.size * 5, 0, Math.PI * 2)
         ctx.fillStyle = grad
@@ -95,7 +96,7 @@ export function HeroParticles({ className }: { className?: string }) {
 
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.size * glow, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(94, 234, 212, ${0.8 * glow})`
+        ctx.fillStyle = `rgba(77, 162, 255, ${0.75 * glow})`
         ctx.fill()
       }
 

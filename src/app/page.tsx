@@ -1,87 +1,226 @@
 'use client'
 
-import { motion, useInView } from 'framer-motion'
-import { useEffect, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { PERSONAS } from '@/lib/personas'
 import { HeroParticles } from '@/components/HeroParticles'
-
-// ─ Animated count-up ─
-function CountUp({ to, format = String }: { to: number; format?: (n: number) => string }) {
-  const [val, setVal] = useState(0)
-  const ref = useRef<HTMLSpanElement>(null)
-  const inView = useInView(ref as React.RefObject<Element>, { once: true, margin: '-80px' })
-  useEffect(() => {
-    if (!inView) return
-    const t0 = performance.now()
-    const tick = (t: number) => {
-      const p = Math.min((t - t0) / 1800, 1)
-      setVal(Math.round((1 - Math.pow(1 - p, 3)) * to))
-      if (p < 1) requestAnimationFrame(tick)
-    }
-    requestAnimationFrame(tick)
-  }, [inView, to])
-  return <span ref={ref}>{format(val)}</span>
-}
-
-const IMPACT = [
-  { to: 42, format: (n: number) => `₹${(n / 10).toFixed(1)} Cr`, label: 'saved, Year 1', sub: 'All 5 systems combined' },
-  { to: 3400, format: (n: number) => n.toLocaleString('en-IN'), label: 'queries handled / day', sub: 'Across 31,000 employees' },
-  { to: 12, format: (n: number) => `${n} wks`, label: 'brief to live deploy', sub: 'From kickoff to production' },
-  { to: 94, format: (n: number) => `${n}%`, label: 'employee adoption', sub: 'Month 3, no mandates issued' },
-]
-
-const TIMELINE = [
-  {
-    week: 'Week 1–2', title: 'Audit & Discovery',
-    desc: 'Mapped every repeating query, ticket, and manual process. 4,200 tickets audited. 38 failure patterns found.',
-    detail: 'The first week was all listening. We sat in on support calls, dug through 3 years of ticket history, and mapped everything that was breaking.',
-  },
-  {
-    week: 'Week 3–5', title: 'Knowledge Engineering',
-    desc: 'Policy docs, runbooks, product specs — cleaned, structured, and loaded into the knowledge graph.',
-    detail: 'The HR handbook alone existed in 14 versions across 3 SharePoints. Week 3 was brutal.',
-  },
-  {
-    week: 'Week 6–9', title: 'Build & Tune',
-    desc: '5 AI assistants built, each with custom personas, tone, and variable prompt systems.',
-    detail: 'We tested every bot against 500 real historical queries before it saw a live user.',
-  },
-  {
-    week: 'Week 10–12', title: 'Deploy & Measure',
-    desc: 'Rolled out to customer portal, WhatsApp, intranet, Slack, and CRM sidebar.',
-    detail: 'Metrics from Day 1. No waiting for monthly reports — we built dashboards into the handoff.',
-  },
-]
-
-const STACK = ['OpenAI GPT-4o', 'LightRAG GraphRAG', 'Supabase pgvector', 'Next.js App Router', 'Vercel', 'n8n', 'WhatsApp API', 'Slack API']
-
-const COMPANY = { founded: '1989', revenue: '₹18,200 Cr', employees: '31,000+', verticals: '6 verticals', listed: 'BSE & NSE' }
+import { DemoSection } from '@/components/DemoSection'
 
 const fade = { hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } } }
-const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } }
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.09 } } }
 
+const STACK = ['LightRAG GraphRAG', 'OpenAI GPT-4o', 'Supabase pgvector', 'Next.js', 'Vercel', 'n8n', 'WhatsApp API', 'Voice Agents']
+
+// ── Hero: animated knowledge graph SVG ──────────────────────────────────────
+function KnowledgeGraphHero() {
+  const cx = 300, cy = 240
+  const nodes = [
+    { id: 'HR Handbook', x: 95, y: 90, color: '#4DA2FF' },
+    { id: 'IT Runbook', x: 510, y: 105, color: '#60B3FF' },
+    { id: 'Customer FAQ', x: 555, y: 320, color: '#4DA2FF' },
+    { id: 'Sales Guide', x: 420, y: 440, color: '#60B3FF' },
+    { id: 'Finance Policy', x: 145, y: 430, color: '#4DA2FF' },
+    { id: 'Product Specs', x: 55, y: 280, color: '#60B3FF' },
+  ]
+
+  return (
+    <svg viewBox="0 0 600 500" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      <defs>
+        <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#4DA2FF" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#4DA2FF" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="nodeGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#4DA2FF" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#4DA2FF" stopOpacity="0" />
+        </radialGradient>
+        <filter id="blur">
+          <feGaussianBlur stdDeviation="8" />
+        </filter>
+      </defs>
+
+      {/* Center ambient glow */}
+      <circle cx={cx} cy={cy} r="130" fill="url(#centerGlow)" />
+
+      {/* Edges */}
+      {nodes.map((n, i) => (
+        <g key={n.id}>
+          <line
+            x1={cx} y1={cy} x2={n.x} y2={n.y}
+            stroke="#4DA2FF" strokeOpacity="0.18" strokeWidth="1"
+          />
+          {/* Animated data flow dot */}
+          <circle r="2.5" fill="#4DA2FF" opacity="0.7">
+            <animateMotion
+              dur={`${2.5 + i * 0.4}s`}
+              repeatCount="indefinite"
+              begin={`${i * 0.5}s`}
+            >
+              <mpath href={`#path-${i}`} />
+            </animateMotion>
+            <animate attributeName="opacity" values="0;1;1;0" dur={`${2.5 + i * 0.4}s`} repeatCount="indefinite" begin={`${i * 0.5}s`} />
+          </circle>
+          <path id={`path-${i}`} d={`M${n.x},${n.y} L${cx},${cy}`} visibility="hidden" />
+        </g>
+      ))}
+
+      {/* Outer doc nodes */}
+      {nodes.map((n) => (
+        <g key={n.id}>
+          <circle cx={n.x} cy={n.y} r="32" fill="url(#nodeGlow)" />
+          <circle cx={n.x} cy={n.y} r="22" fill="#020814" stroke={n.color} strokeOpacity="0.45" strokeWidth="1.5" />
+          <circle cx={n.x} cy={n.y} r="22" fill="none" stroke={n.color} strokeOpacity="0.15" strokeWidth="8">
+            <animate attributeName="r" values="22;28;22" dur="3s" repeatCount="indefinite" />
+            <animate attributeName="stroke-opacity" values="0.15;0;0.15" dur="3s" repeatCount="indefinite" />
+          </circle>
+          <text
+            x={n.x} y={n.y - 30}
+            textAnchor="middle"
+            fill="#94A3B8" fontSize="9" fontFamily="system-ui, sans-serif"
+            letterSpacing="0.3"
+          >{n.id}</text>
+          {/* Doc icon */}
+          <rect x={n.x - 7} y={n.y - 8} width="14" height="16" rx="2" fill={n.color} fillOpacity="0.2" stroke={n.color} strokeOpacity="0.5" strokeWidth="1" />
+          <line x1={n.x - 4} y1={n.y - 3} x2={n.x + 4} y2={n.y - 3} stroke={n.color} strokeOpacity="0.6" strokeWidth="1" />
+          <line x1={n.x - 4} y1={n.y + 1} x2={n.x + 4} y2={n.y + 1} stroke={n.color} strokeOpacity="0.6" strokeWidth="1" />
+          <line x1={n.x - 4} y1={n.y + 5} x2={n.x + 2} y2={n.y + 5} stroke={n.color} strokeOpacity="0.6" strokeWidth="1" />
+        </g>
+      ))}
+
+      {/* Central "brain" node */}
+      <circle cx={cx} cy={cy} r="58" fill="#020814" stroke="#4DA2FF" strokeOpacity="0.3" strokeWidth="1.5" />
+      <circle cx={cx} cy={cy} r="58" fill="none" stroke="#4DA2FF" strokeOpacity="0.08" strokeWidth="12">
+        <animate attributeName="r" values="58;70;58" dur="4s" repeatCount="indefinite" />
+        <animate attributeName="stroke-opacity" values="0.08;0;0.08" dur="4s" repeatCount="indefinite" />
+      </circle>
+      {/* Inner ring */}
+      <circle cx={cx} cy={cy} r="48" fill="#4DA2FF" fillOpacity="0.06" stroke="#4DA2FF" strokeOpacity="0.2" strokeWidth="1" />
+
+      {/* Brain icon — neural nodes */}
+      {[
+        [cx - 14, cy - 12], [cx + 14, cy - 12],
+        [cx, cy - 20], [cx - 20, cy + 4], [cx + 20, cy + 4], [cx, cy + 16],
+      ].map(([nx, ny], i) => (
+        <circle key={i} cx={nx} cy={ny} r="3.5" fill="#4DA2FF" fillOpacity="0.5">
+          <animate attributeName="fill-opacity" values="0.5;1;0.5" dur={`${2 + i * 0.3}s`} repeatCount="indefinite" />
+        </circle>
+      ))}
+      {/* Neural connections */}
+      {[
+        [cx - 14, cy - 12, cx, cy - 20],
+        [cx + 14, cy - 12, cx, cy - 20],
+        [cx - 14, cy - 12, cx - 20, cy + 4],
+        [cx + 14, cy - 12, cx + 20, cy + 4],
+        [cx - 20, cy + 4, cx, cy + 16],
+        [cx + 20, cy + 4, cx, cy + 16],
+        [cx - 14, cy - 12, cx + 14, cy - 12],
+      ].map(([x1, y1, x2, y2], i) => (
+        <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#4DA2FF" strokeOpacity="0.35" strokeWidth="1" />
+      ))}
+
+      <text x={cx} y={cy + 32} textAnchor="middle" fill="#4DA2FF" fontSize="12" fontWeight="600" fontFamily="system-ui, sans-serif" letterSpacing="1">IKnowIt</text>
+      <text x={cx} y={cy + 46} textAnchor="middle" fill="#475569" fontSize="7.5" fontFamily="system-ui, sans-serif" letterSpacing="0.5">Knowledge Brain</text>
+    </svg>
+  )
+}
+
+// ── Integration Layer diagram ────────────────────────────────────────────────
+function IntegrationDiagram() {
+  const channels = [
+    { icon: '💬', label: 'WhatsApp', color: '#25D366' },
+    { icon: '🎤', label: 'Voice Agent', color: '#4DA2FF' },
+    { icon: '🌐', label: 'Web Chat', color: '#60B3FF' },
+    { icon: '⚡', label: 'Slack', color: '#E01E5A' },
+    { icon: '📧', label: 'Email', color: '#94A3B8' },
+  ]
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-0">
+      {/* Intelligence layer */}
+      <motion.div
+        variants={fade}
+        className="rounded-2xl border border-[#4DA2FF]/30 bg-[#4DA2FF]/5 p-6 text-center relative overflow-hidden"
+      >
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-64 h-32 rounded-full bg-[#4DA2FF]/5 blur-2xl" />
+        </div>
+        <div className="relative">
+          <div className="text-[10px] text-[#4DA2FF] font-mono tracking-widest mb-3 uppercase">Intelligence Layer</div>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 rounded-xl bg-[#4DA2FF]/10 border border-[#4DA2FF]/25 px-4 py-2.5">
+              <span className="text-lg">🧠</span>
+              <div className="text-left">
+                <div className="text-sm font-semibold text-white">IKnowIt Agent</div>
+                <div className="text-[10px] text-[#64748B]">Knowledge Graph + Dual Retrieval</div>
+              </div>
+            </div>
+            <span className="text-[#475569] text-xs">←</span>
+            <div className="flex gap-2">
+              {['HR Docs', 'IT Runbook', 'Sales Guide', '+ more'].map(d => (
+                <span key={d} className="text-[10px] text-[#94A3B8] border border-white/[0.08] bg-white/[0.03] rounded-lg px-2 py-1">{d}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Connector lines */}
+      <div className="flex justify-center items-center py-3 gap-8">
+        {channels.map((_, i) => (
+          <div key={i} className="flex flex-col items-center gap-1">
+            <div className="w-px h-6 bg-gradient-to-b from-[#4DA2FF]/40 to-transparent" />
+            <div
+              className="w-1.5 h-1.5 rounded-full bg-[#4DA2FF]"
+              style={{ animation: `bounce-dot 1.5s ease-in-out ${i * 0.15}s infinite` }}
+            />
+            <div className="w-px h-3 bg-gradient-to-b from-[#4DA2FF]/20 to-transparent" />
+          </div>
+        ))}
+      </div>
+
+      {/* Communication layer */}
+      <motion.div variants={fade} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6">
+        <div className="text-[10px] text-[#94A3B8] font-mono tracking-widest mb-4 text-center uppercase">Communication Layer</div>
+        <div className="flex gap-3 justify-center flex-wrap">
+          {channels.map(ch => (
+            <div
+              key={ch.label}
+              className="flex flex-col items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/20 transition px-5 py-4 min-w-[90px]"
+            >
+              <span className="text-2xl">{ch.icon}</span>
+              <span className="text-xs text-[#94A3B8] font-medium">{ch.label}</span>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+// ── Main page ────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const personas = Object.values(PERSONAS)
 
   return (
-    <div className="min-h-screen bg-[#060A0F] text-white overflow-x-hidden">
+    <div className="min-h-screen bg-[#020814] text-white overflow-x-hidden">
 
       {/* ─── NAV ─── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/[0.06] bg-[#060A0F]/80 backdrop-blur-xl">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-teal-500 flex items-center justify-center">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M7 1L13 4.5V9.5L7 13L1 9.5V4.5L7 1Z" fill="white" fillOpacity="0.9" />
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/[0.05] bg-[#020814]/85 backdrop-blur-xl">
+        <Link href="/" className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-[#4DA2FF]/15 border border-[#4DA2FF]/35 flex items-center justify-center">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <circle cx="6" cy="6" r="2.5" fill="#4DA2FF" />
+              <circle cx="6" cy="6" r="5" stroke="#4DA2FF" strokeOpacity="0.4" strokeWidth="1" />
             </svg>
           </div>
-          <span className="font-semibold tracking-tight">stellaris<span className="text-teal-400">.ai</span></span>
-        </div>
-        <div className="flex items-center gap-5">
-          <Link href="#about" className="text-sm text-gray-400 hover:text-white transition hidden md:block">About</Link>
-          <Link href="/personas" className="text-sm text-gray-400 hover:text-white transition hidden md:block">Case studies</Link>
-          <Link href="/login" className="rounded-lg bg-teal-600 hover:bg-teal-500 px-4 py-1.5 text-sm font-medium transition">
-            Try the demo
+          <span className="font-bold tracking-tight">IKnow<span className="text-[#4DA2FF]">It</span></span>
+        </Link>
+        <div className="flex items-center gap-6">
+          <a href="#how-it-works" className="text-sm text-[#64748B] hover:text-white transition hidden md:block">How it works</a>
+          <a href="#personas" className="text-sm text-[#64748B] hover:text-white transition hidden md:block">Personas</a>
+          <a href="#demo" className="text-sm text-[#64748B] hover:text-white transition hidden md:block">Live Demo</a>
+          <Link href="/login" className="rounded-xl bg-[#4DA2FF] hover:bg-[#60B3FF] px-4 py-2 text-sm font-semibold transition shadow-lg shadow-[#4DA2FF]/20">
+            Get started
           </Link>
         </div>
       </nav>
@@ -89,138 +228,101 @@ export default function HomePage() {
       {/* ─── HERO ─── */}
       <section className="relative min-h-screen flex items-center pt-20">
         <div className="absolute inset-0">
-          <HeroParticles className="opacity-45" />
+          <HeroParticles className="opacity-40" />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-r from-[#060A0F] via-[#060A0F]/85 to-[#060A0F]/30 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#060A0F] via-transparent to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#020814] via-[#020814]/85 to-[#020814]/30 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#020814] via-transparent to-transparent pointer-events-none" />
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-10 py-24 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center w-full">
 
           {/* Left: text */}
           <motion.div variants={stagger} initial="hidden" animate="show">
-            <motion.div variants={fade} className="inline-flex items-center gap-2 rounded-full border border-teal-500/30 bg-teal-950/40 px-4 py-1.5 text-xs text-teal-400 mb-8 backdrop-blur">
-              <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
-              Case Study · Stellaris Group · FY2025
+            <motion.div variants={fade} className="inline-flex items-center gap-2 rounded-full border border-[#4DA2FF]/30 bg-[#4DA2FF]/5 px-4 py-1.5 text-xs text-[#4DA2FF] mb-8 backdrop-blur">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#4DA2FF] animate-pulse" />
+              AI Document Intelligence
             </motion.div>
 
-            {/* Letter-by-letter headline */}
             <motion.h1
-              className="text-5xl lg:text-6xl font-bold leading-[1.08] tracking-tight"
-              variants={{ hidden: {}, show: { transition: { staggerChildren: 0.03, delayChildren: 0.1 } } }}
+              className="text-5xl lg:text-6xl font-bold leading-[1.06] tracking-tight"
+              variants={stagger}
             >
-              {'Five AI assistants.'.split('').map((ch, i) => (
-                <motion.span
-                  key={i}
-                  variants={{ hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' as const } } }}
-                  style={{ display: ch === ' ' ? 'inline' : 'inline-block' }}
-                >
-                  {ch === ' ' ? ' ' : ch}
-                </motion.span>
-              ))}
-              <br />
-              <motion.span variants={fade} className="text-teal-400">One brain.</motion.span>
-              <br />
-              <motion.span variants={fade}>Zero overhead.</motion.span>
+              <motion.span variants={fade} className="block">One Agent.</motion.span>
+              <motion.span variants={fade} className="block text-[#4DA2FF]">Trained on Your Docs.</motion.span>
+              <motion.span variants={fade} className="block">Knows It All.</motion.span>
             </motion.h1>
 
-            <motion.p variants={fade} className="mt-6 text-base text-gray-400 leading-relaxed max-w-md">
-              We replaced 5 manual workflows at Stellaris Group — a ₹18,200 Cr Indian conglomerate with 31,000 employees — with a unified AI system. Here's the full build, live and testable.
+            <motion.p variants={fade} className="mt-6 text-base text-[#64748B] leading-relaxed max-w-md">
+              Upload your policies, runbooks, and product specs. We build a knowledge graph and train one AI agent that becomes your team's single source of truth — instantly.
             </motion.p>
 
             <motion.div variants={fade} className="mt-10 flex items-center gap-4 flex-wrap">
               <a
-                href="#case-study"
-                className="group relative rounded-xl bg-teal-600 hover:bg-teal-500 px-6 py-3 text-sm font-semibold transition shadow-lg shadow-teal-900/40 overflow-hidden"
+                href="#demo"
+                className="group relative rounded-xl bg-[#4DA2FF] hover:bg-[#60B3FF] px-6 py-3 text-sm font-semibold transition shadow-xl shadow-[#4DA2FF]/25 overflow-hidden"
               >
-                <span className="relative z-10">See what we built →</span>
-                <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                <span className="relative z-10">See it live →</span>
               </a>
               <Link
                 href="/login"
-                className="rounded-xl border border-white/15 hover:border-white/30 bg-white/[0.04] hover:bg-white/[0.07] px-6 py-3 text-sm font-medium text-gray-300 hover:text-white transition"
+                className="rounded-xl border border-white/[0.12] hover:border-[#4DA2FF]/40 bg-white/[0.03] hover:bg-[#4DA2FF]/5 px-6 py-3 text-sm font-medium text-[#94A3B8] hover:text-white transition"
               >
-                Try the live system
+                Train your own agent
               </Link>
             </motion.div>
 
             <motion.div variants={fade} className="mt-8 flex items-center gap-6 flex-wrap">
-              {['₹4.2 Cr saved', '3,400 queries/day', '12 wks to deploy'].map(s => (
-                <div key={s} className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span className="w-1 h-1 rounded-full bg-teal-500 flex-shrink-0" />
+              {['No login to demo', '2-week deployment', 'Any communication channel'].map(s => (
+                <div key={s} className="flex items-center gap-1.5 text-xs text-[#475569]">
+                  <span className="w-1 h-1 rounded-full bg-[#4DA2FF] flex-shrink-0" />
                   {s}
                 </div>
               ))}
             </motion.div>
           </motion.div>
 
-          {/* Right: visual with floating cards */}
+          {/* Right: knowledge graph SVG */}
           <motion.div
             initial={{ opacity: 0, x: 40 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.3, ease: 'easeOut' }}
+            transition={{ duration: 0.9, delay: 0.3, ease: 'easeOut' }}
             className="hidden lg:block relative"
           >
-            {/* Main panel — shows image if /public/images/hero-visual.jpg exists, else gradient */}
-            <div
-              className="relative h-[540px] rounded-2xl overflow-hidden border border-white/10"
-              style={{
-                backgroundImage: 'url(/images/hero-visual.png)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                background: 'linear-gradient(135deg, #0d1f2d 0%, #0a1628 60%, #061a1f 100%)',
-              }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-t from-[#060A0F] via-[#060A0F]/10 to-transparent" />
-
-              {/* Floating card: live queries */}
+            <div className="relative h-[520px] rounded-2xl overflow-hidden border border-white/[0.08] bg-[#030c1c]">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <KnowledgeGraphHero />
+              </div>
+              {/* Floating stat cards */}
               <motion.div
-                className="absolute top-6 right-6 rounded-xl bg-white/[0.08] backdrop-blur-xl border border-white/15 px-4 py-3 shadow-xl"
+                className="absolute top-6 right-6 rounded-xl bg-white/[0.07] backdrop-blur-xl border border-white/[0.12] px-4 py-3"
                 animate={{ y: [0, -6, 0] }}
                 transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
               >
-                <div className="text-[10px] text-gray-400 mb-0.5">Live queries today</div>
-                <div className="text-2xl font-bold text-teal-400">3,412</div>
+                <div className="text-[10px] text-[#64748B] mb-0.5">Queries resolved today</div>
+                <div className="text-2xl font-bold text-[#4DA2FF]">3,412</div>
               </motion.div>
-
-              {/* Floating card: resolution time */}
               <motion.div
-                className="absolute top-1/2 -translate-y-1/2 right-6 rounded-xl bg-white/[0.08] backdrop-blur-xl border border-white/15 px-4 py-3 shadow-xl"
-                animate={{ y: [-5, 3, -5] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-              >
-                <div className="text-[10px] text-gray-400 mb-1">AI confidence</div>
-                <div className="text-2xl font-bold text-white">94%</div>
-                <div className="mt-2 h-1.5 w-24 rounded-full bg-white/10">
-                  <div className="h-full w-[94%] rounded-full bg-teal-500" />
-                </div>
-              </motion.div>
-
-              {/* Floating card: resolution time */}
-              <motion.div
-                className="absolute bottom-40 left-5 rounded-xl bg-white/[0.08] backdrop-blur-xl border border-white/15 px-4 py-3 shadow-xl"
+                className="absolute bottom-32 left-5 rounded-xl bg-white/[0.07] backdrop-blur-xl border border-white/[0.12] px-4 py-3"
                 animate={{ y: [0, 5, 0] }}
                 transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.7 }}
               >
-                <div className="text-[10px] text-gray-400 mb-0.5">Avg resolution time</div>
-                <div className="flex items-end gap-2 mt-0.5">
-                  <span className="text-xl font-bold text-white">12 min</span>
-                  <span className="text-xs text-teal-400 pb-0.5">↓ from 4.5 hrs</span>
+                <div className="text-[10px] text-[#64748B] mb-0.5">AI confidence score</div>
+                <div className="text-xl font-bold text-white">94%</div>
+                <div className="mt-1.5 h-1 w-20 rounded-full bg-white/10">
+                  <div className="h-full w-[94%] rounded-full bg-[#4DA2FF]" />
                 </div>
               </motion.div>
-
-              {/* Bottom chat preview */}
               <div className="absolute bottom-0 left-0 right-0 p-5">
-                <div className="rounded-xl bg-black/70 backdrop-blur border border-white/[0.08] p-4">
-                  <div className="text-[10px] text-gray-500 mb-2 font-mono">IT Helpdesk · Live chat</div>
+                <div className="rounded-xl bg-black/60 backdrop-blur border border-white/[0.07] p-4">
+                  <div className="text-[10px] text-[#475569] mb-2 font-mono">IKnowIt Agent · Live</div>
                   <div className="space-y-2">
                     <div className="flex gap-2">
-                      <span className="text-[11px] text-gray-300 bg-white/[0.06] rounded-lg px-3 py-2 max-w-[65%] leading-relaxed">
-                        How do I reset my VPN password?
+                      <span className="text-[11px] text-[#64748B] bg-white/[0.05] rounded-lg px-3 py-2 leading-relaxed">
+                        What is the maternity leave policy?
                       </span>
                     </div>
-                    <div className="flex gap-2 justify-end">
-                      <span className="text-[11px] text-teal-300 bg-teal-950/70 rounded-lg px-3 py-2 max-w-[75%] leading-relaxed">
-                        Go to portal.stellaris.com → My Account → Security → Reset VPN. Takes ~2 min. No IT ticket needed.
+                    <div className="flex justify-end">
+                      <span className="text-[11px] text-[#93C5FD] bg-[#4DA2FF]/10 rounded-lg px-3 py-2 max-w-[80%] leading-relaxed border border-[#4DA2FF]/15">
+                        26 weeks paid maternity leave per the Maternity Benefit Act 2017. Applies from Day 1.
                       </span>
                     </div>
                   </div>
@@ -231,324 +333,253 @@ export default function HomePage() {
         </div>
 
         {/* Scroll cue */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-25">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-20">
           <motion.div
-            className="w-px h-10 bg-gradient-to-b from-teal-500 to-transparent"
+            className="w-px h-10 bg-gradient-to-b from-[#4DA2FF] to-transparent"
             animate={{ scaleY: [1, 0.3, 1], opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
           />
         </div>
       </section>
 
-      {/* ─── TECH STACK MARQUEE ─── */}
-      <div className="border-y border-white/[0.05] py-4 overflow-hidden">
+      {/* ─── TECH MARQUEE ─── */}
+      <div className="border-y border-white/[0.04] py-4 overflow-hidden bg-[#030c1c]/50">
         <motion.div
           animate={{ x: ['0%', '-50%'] }}
-          transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
           className="flex gap-16 whitespace-nowrap"
         >
           {[...STACK, ...STACK].map((item, i) => (
-            <span key={i} className="text-sm text-gray-600 font-medium tracking-wide">{item}</span>
+            <span key={i} className="text-sm text-[#334155] font-medium tracking-wide">{item}</span>
           ))}
         </motion.div>
       </div>
 
-      {/* ─── THE CLIENT ─── */}
-      <section id="case-study" className="px-6 md:px-10 py-24">
+      {/* ─── HOW IT WORKS ─── */}
+      <section id="how-it-works" className="px-6 md:px-10 py-24">
         <div className="max-w-7xl mx-auto">
+          <motion.div variants={fade} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-14">
+            <p className="text-[#4DA2FF] text-xs font-mono tracking-widest uppercase mb-3">How it works</p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">From documents to intelligence<br />in three steps</h2>
+            <p className="text-sm text-[#64748B] max-w-md mx-auto">We don&apos;t just search your files. We map the relationships between every concept, entity, and fact across your entire documentation.</p>
+          </motion.div>
+
           <motion.div
-            variants={stagger} initial="hidden" whileInView="show"
-            viewport={{ once: true, margin: '-80px' }}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-start"
+            variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-5"
           >
-            <motion.div variants={fade} className="space-y-6">
-              <div>
-                <p className="text-gray-500 text-sm mb-3">The client</p>
-                <h2 className="text-3xl font-bold leading-snug">Stellaris Group came to us with a specific frustration.</h2>
-              </div>
-
-              <blockquote className="text-xl text-gray-300 leading-relaxed font-light border-l-2 border-teal-500 pl-5">
-                "We have 31,000 people, six businesses, and a support team drowning in questions they've answered before. Every department is hoarding the same knowledge. Find us a way out."
-              </blockquote>
-              <p className="text-sm text-gray-500">— Rajan Krishnamurthy, CHRO & CIO (Interim), Stellaris Group</p>
-
-              <p className="text-sm text-gray-400 leading-relaxed">
-                Before touching a single line of code, we audited 4,200 support tickets. The pattern was obvious:
-              </p>
-
-              <div className="space-y-3.5">
-                {[
-                  { num: '71%', desc: 'of all tickets were repeat questions with known answers' },
-                  { num: '22 days', desc: 'average time for a new hire to reach full productivity' },
-                  { num: '72%', desc: 'of IT team\'s time spent on L1 tickets already in the runbook' },
-                  { num: '₹0', desc: 'of institutional knowledge was searchable across all six divisions' },
-                ].map(({ num, desc }) => (
-                  <div key={num} className="flex items-start gap-4">
-                    <span className="text-teal-400 font-bold text-sm min-w-[68px] pt-0.5">{num}</span>
-                    <span className="text-sm text-gray-400">{desc}</span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
-            <motion.div variants={fade} className="space-y-4">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-7">
-                <div className="flex items-center justify-between mb-5">
-                  <h3 className="text-lg font-semibold">Stellaris Group</h3>
-                  <span className="text-xs text-teal-400 bg-teal-950/60 border border-teal-800/40 rounded-full px-3 py-1">Engagement active</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3 mb-5">
-                  {[
-                    ['Founded', COMPANY.founded], ['HQ', 'Nariman Point, Mumbai'],
-                    ['Revenue', COMPANY.revenue], ['Employees', COMPANY.employees],
-                    ['Verticals', COMPANY.verticals], ['Listed', COMPANY.listed],
-                  ].map(([k, v]) => (
-                    <div key={k} className="rounded-xl bg-white/[0.04] p-3">
-                      <div className="text-[10px] text-gray-600 mb-0.5">{k}</div>
-                      <div className="text-sm font-medium">{v}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="border-t border-white/[0.08] pt-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Contract</span>
-                    <span className="text-teal-400 font-medium">₹8.4L setup + ₹72K/mo retainer</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Timeline</span>
-                    <span className="text-gray-300">12 weeks to full deployment</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Discovery image slot */}
-              <div
-                className="h-52 rounded-2xl overflow-hidden border border-white/[0.08] relative"
-                style={{
-                  backgroundImage: 'url(/images/discovery.png)',
-                  backgroundSize: 'cover', backgroundPosition: 'center',
-                  background: 'linear-gradient(135deg, #0f1f2d 0%, #0d1a20 100%)',
-                }}
+            {[
+              {
+                step: '01', icon: '📄', title: 'Upload Your Docs',
+                desc: 'PDFs, runbooks, policies, SOPs — any format. Our pipeline extracts and structures every page.',
+                detail: 'Supports PDF, DOCX, TXT. 4MB limit on demo tier; unlimited on enterprise.',
+              },
+              {
+                step: '02', icon: '🕸', title: 'Build the Knowledge Graph',
+                desc: 'LightRAG extracts entities, relationships, and facts — building a graph of how everything connects.',
+                detail: 'Not keyword search. The graph understands context: who reports to whom, what policy governs what.',
+              },
+              {
+                step: '03', icon: '⚡', title: 'Query at Any Depth',
+                desc: 'Dual retrieval: graph context + semantic search, merged. Every answer is grounded in your documents.',
+                detail: "Ask 'What is the escalation path for a P1 IT incident?' — it reasons across multiple docs to answer.",
+              },
+            ].map((s, i) => (
+              <motion.div
+                key={s.step}
+                variants={fade}
+                className="group relative rounded-2xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04] hover:border-[#4DA2FF]/30 p-7 transition-all duration-300"
               >
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-4">
-                  <p className="text-xs text-gray-400 italic">Discovery session, Week 1 — mapping the ticket taxonomy</p>
-                </div>
-              </div>
-            </motion.div>
+                <div
+                  className="absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                  style={{ background: 'radial-gradient(400px at 50% 0%, rgba(77,162,255,0.05), transparent)' }}
+                />
+                <div className="text-[10px] font-mono text-[#4DA2FF] tracking-widest mb-4">{s.step}</div>
+                <div className="text-3xl mb-4">{s.icon}</div>
+                <h3 className="font-semibold text-white mb-2">{s.title}</h3>
+                <p className="text-sm text-[#64748B] leading-relaxed mb-3">{s.desc}</p>
+                <p className="text-xs text-[#334155] italic leading-relaxed border-t border-white/[0.05] pt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  {s.detail}
+                </p>
+                {i < 2 && (
+                  <div className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 z-10 text-[#4DA2FF]/30 text-lg">→</div>
+                )}
+              </motion.div>
+            ))}
           </motion.div>
         </div>
       </section>
 
-      {/* ─── TIMELINE ─── */}
-      <section className="py-20 bg-black/20">
-        <div className="max-w-7xl mx-auto px-6 md:px-10">
-          <motion.div variants={fade} initial="hidden" whileInView="show" viewport={{ once: true }} className="mb-12">
-            <p className="text-gray-500 text-sm mb-2">How we work</p>
-            <h2 className="text-3xl font-bold">12 weeks. No magic. Just structure.</h2>
-          </motion.div>
-
-          <div className="relative">
-            {/* Connecting line — desktop only */}
-            <div className="hidden lg:block absolute top-8 left-10 right-10 h-px bg-gradient-to-r from-transparent via-teal-500/25 to-transparent" />
-
-            <motion.div
-              variants={stagger} initial="hidden" whileInView="show"
-              viewport={{ once: true, margin: '-60px' }}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
-            >
-              {TIMELINE.map((t, i) => (
-                <motion.div
-                  key={t.week}
-                  variants={fade}
-                  className="relative rounded-2xl border border-white/10 bg-white/[0.03] p-6 hover:border-teal-500/30 hover:bg-white/[0.05] transition-all group cursor-default"
-                >
-                  {/* Timeline dot */}
-                  <div className="hidden lg:block absolute -top-[17px] left-7 w-3 h-3 rounded-full border-2 border-teal-500/60 bg-[#060A0F] z-10" />
-
-                  <div className="text-[10px] font-mono text-teal-500 tracking-widest mb-3">{t.week}</div>
-                  <div className="text-2xl font-bold text-gray-700 font-mono mb-3">0{i + 1}</div>
-                  <h3 className="font-semibold text-white mb-2">{t.title}</h3>
-                  <p className="text-xs text-gray-500 leading-relaxed mb-3">{t.desc}</p>
-                  {/* Reveal on hover — the honest detail */}
-                  <p className="text-xs text-gray-600 italic leading-relaxed border-t border-white/[0.06] pt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    {t.detail}
-                  </p>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── WHAT WE BUILT ─── */}
-      <section id="personas" className="px-6 md:px-10 py-24">
+      {/* ─── CASE STUDY: STELLARIS ─── */}
+      <section id="case-study" className="px-6 md:px-10 py-24 bg-[#030c1c]/60">
         <div className="max-w-7xl mx-auto">
-          <motion.div variants={fade} initial="hidden" whileInView="show" viewport={{ once: true }} className="mb-12">
-            <p className="text-gray-500 text-sm mb-2">The deliverables</p>
-            <h2 className="text-3xl font-bold">Five AI assistants. All live. All testable.</h2>
-            <p className="text-gray-500 mt-2 text-sm max-w-lg">
-              Click any to read the case study and chat with the actual bot — same knowledge base running in production.
+          <motion.div variants={fade} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 rounded-full border border-yellow-500/25 bg-yellow-950/30 px-4 py-1.5 text-xs text-yellow-400 mb-5">
+              ⚠ Dummy company — real methodology. Client identity protected for confidentiality.
+            </div>
+            <p className="text-[#4DA2FF] text-xs font-mono tracking-widest uppercase mb-3">Case Study</p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Stellaris Group</h2>
+            <p className="text-sm text-[#64748B] max-w-md mx-auto">
+              A ₹18,200 Cr Indian conglomerate. 31,000 employees. 6 business verticals. Knowledge siloed across every department.
             </p>
           </motion.div>
 
           <motion.div
-            variants={stagger} initial="hidden" whileInView="show"
-            viewport={{ once: true, margin: '-60px' }}
+            variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }}
+            className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start"
+          >
+            {/* Problem */}
+            <motion.div variants={fade} className="space-y-6">
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-7">
+                <h3 className="text-sm font-semibold text-[#94A3B8] uppercase tracking-widest mb-5">The Problem</h3>
+                <blockquote className="text-lg text-white leading-relaxed font-light border-l-2 border-[#4DA2FF] pl-5 mb-5">
+                  "We have 31,000 people, six businesses, and a support team drowning in questions they've answered before."
+                </blockquote>
+                <div className="space-y-3">
+                  {[
+                    { num: '71%', desc: 'of all support tickets were repeat questions with documented answers' },
+                    { num: '22 days', desc: 'average time for a new hire to reach full productivity' },
+                    { num: '72%', desc: 'of IT team time spent on L1 tickets already in the runbook' },
+                    { num: '4,200', desc: 'monthly tickets audited — 38 failure patterns identified' },
+                  ].map(({ num, desc }) => (
+                    <div key={num} className="flex items-start gap-4">
+                      <span className="text-[#4DA2FF] font-bold text-sm min-w-[70px] pt-0.5">{num}</span>
+                      <span className="text-sm text-[#64748B]">{desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Results */}
+            <motion.div variants={fade} className="space-y-4">
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-7">
+                <h3 className="text-sm font-semibold text-[#94A3B8] uppercase tracking-widest mb-5">The Results — 90 Days Post-Deploy</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { val: '68%', label: 'tickets resolved by AI' },
+                    { val: '42 sec', label: 'avg first response (was 6.8hr)' },
+                    { val: '94%', label: 'employee adoption, Month 3' },
+                    { val: '12 wks', label: 'brief to live deploy' },
+                    { val: '₹4.2 Cr', label: 'saved in Year 1' },
+                    { val: '3,400+', label: 'daily queries handled' },
+                  ].map(({ val, label }) => (
+                    <div key={label} className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 hover:border-[#4DA2FF]/25 transition">
+                      <div className="text-xl font-bold text-[#4DA2FF]">{val}</div>
+                      <div className="text-[10px] text-[#64748B] mt-0.5 leading-tight">{label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
+                <div className="text-[10px] text-[#475569] font-mono mb-3 uppercase tracking-widest">Timeline</div>
+                <div className="space-y-2">
+                  {[
+                    { week: 'Week 1–2', title: 'Audit & Discovery', desc: '4,200 tickets. 38 failure patterns.' },
+                    { week: 'Week 3–5', title: 'Knowledge Engineering', desc: 'Docs cleaned, structured, graph built.' },
+                    { week: 'Week 6–9', title: 'Build & Tune', desc: '5 AI personas built and tested.' },
+                    { week: 'Week 10–12', title: 'Deploy & Measure', desc: 'WhatsApp, web, Slack, CRM sidebar.' },
+                  ].map((t, i) => (
+                    <div key={i} className="flex gap-3 items-start">
+                      <span className="text-[9px] font-mono text-[#4DA2FF] tracking-widest min-w-[72px] pt-0.5">{t.week}</span>
+                      <div>
+                        <span className="text-xs font-medium text-white">{t.title}</span>
+                        <span className="text-xs text-[#475569] ml-2">{t.desc}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ─── LIVE DEMO ─── */}
+      <DemoSection />
+
+      {/* ─── PERSONAS ─── */}
+      <section id="personas" className="px-6 md:px-10 py-24 bg-[#030c1c]/60">
+        <div className="max-w-7xl mx-auto">
+          <motion.div variants={fade} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-14">
+            <p className="text-[#4DA2FF] text-xs font-mono tracking-widest uppercase mb-3">Personas</p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">One Brain. Many Voices.</h2>
+            <p className="text-sm text-[#64748B] max-w-lg mx-auto">
+              The same knowledge graph powers multiple specialised agents — each with a different persona, tone, and use case. One source of truth, many communication styles.
+            </p>
+          </motion.div>
+
+          <motion.div
+            variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }}
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
           >
             {personas.map(p => (
               <motion.div key={p.slug} variants={fade}>
                 <Link
                   href={`/personas/${p.slug}`}
-                  className="group flex flex-col h-full rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-teal-500/40 transition-all duration-300 p-6 relative overflow-hidden"
+                  className="group flex flex-col h-full rounded-2xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] hover:border-[#4DA2FF]/35 transition-all duration-300 p-6 relative overflow-hidden"
                 >
                   <div
-                    className="absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{ background: 'radial-gradient(400px at 50% 0%, rgba(20,184,166,0.07), transparent)' }}
+                    className="absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                    style={{ background: 'radial-gradient(400px at 50% 0%, rgba(77,162,255,0.06), transparent)' }}
                   />
                   <div className="relative">
                     <div className="flex items-start justify-between mb-4">
                       <div className="text-3xl">{p.icon}</div>
-                      <span className="text-[10px] text-teal-500 border border-teal-800/40 bg-teal-950/40 rounded-full px-2 py-0.5">Live</span>
+                      <span className="text-[9px] text-emerald-400 border border-emerald-800/40 bg-emerald-950/40 rounded-full px-2 py-0.5">Live</span>
                     </div>
-                    <h3 className="font-semibold text-white group-hover:text-teal-400 transition text-base mb-1">{p.label}</h3>
-                    <p className="text-xs text-teal-500/80 mb-3 font-medium italic">{p.tagline}</p>
-                    <p className="text-xs text-gray-500 leading-relaxed mb-5">{p.description}</p>
+                    <h3 className="font-semibold text-white group-hover:text-[#4DA2FF] transition mb-1">{p.label}</h3>
+                    <p className="text-xs text-[#4DA2FF]/70 mb-3 font-medium italic">{p.tagline}</p>
+                    <p className="text-xs text-[#64748B] leading-relaxed mb-5">{p.description}</p>
                     <div className="grid grid-cols-2 gap-2 mb-4">
                       {p.caseStudy.metrics.slice(0, 2).map(m => (
-                        <div key={m.label} className="rounded-xl bg-black/30 border border-white/[0.06] p-3">
-                          <div className="text-sm font-bold text-teal-400">{m.value}</div>
-                          <div className="text-[10px] text-gray-600 mt-0.5 leading-tight">{m.label}</div>
+                        <div key={m.label} className="rounded-xl bg-black/30 border border-white/[0.05] p-3">
+                          <div className="text-sm font-bold text-[#4DA2FF]">{m.value}</div>
+                          <div className="text-[10px] text-[#475569] mt-0.5 leading-tight">{m.label}</div>
                         </div>
                       ))}
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-gray-600 group-hover:text-teal-400 transition">
-                      <span>Read case study + chat live</span>
-                      <span className="group-hover:translate-x-1 transition-transform">→</span>
+                    <div className="flex items-center gap-1.5 text-xs text-[#475569] group-hover:text-[#4DA2FF] transition">
+                      <span>Chat with this persona →</span>
                     </div>
                   </div>
                 </Link>
               </motion.div>
             ))}
 
-            {/* Build your own */}
+            {/* Build yours */}
             <motion.div variants={fade}>
               <Link
-                href="/chat?persona=custom"
-                className="group flex flex-col h-full min-h-[280px] rounded-2xl border border-dashed border-white/20 hover:border-teal-500/50 hover:bg-white/[0.02] transition-all duration-300 p-6 items-center justify-center text-center"
+                href="/login"
+                className="group flex flex-col h-full min-h-[280px] rounded-2xl border border-dashed border-white/[0.12] hover:border-[#4DA2FF]/40 hover:bg-[#4DA2FF]/[0.02] transition-all duration-300 p-6 items-center justify-center text-center"
               >
-                <div className="w-12 h-12 rounded-xl border border-dashed border-white/20 group-hover:border-teal-500/50 flex items-center justify-center text-2xl mb-4 transition-all duration-300 group-hover:scale-110">
+                <div className="w-12 h-12 rounded-xl border border-dashed border-white/[0.15] group-hover:border-[#4DA2FF]/40 flex items-center justify-center text-2xl mb-4 transition-all group-hover:scale-110">
                   🛠
                 </div>
-                <h3 className="font-semibold text-white group-hover:text-teal-400 transition">Build yours</h3>
-                <p className="text-xs text-gray-600 mt-2 leading-relaxed max-w-[170px]">
+                <h3 className="font-semibold text-white group-hover:text-[#4DA2FF] transition">Build yours</h3>
+                <p className="text-xs text-[#475569] mt-2 leading-relaxed max-w-[160px]">
                   Upload your documents. Define your persona. Live in 2 weeks.
                 </p>
-                <div className="mt-4 text-xs text-gray-600 group-hover:text-teal-400 transition">Start free →</div>
+                <div className="mt-4 text-xs text-[#475569] group-hover:text-[#4DA2FF] transition">Start free →</div>
               </Link>
             </motion.div>
           </motion.div>
         </div>
       </section>
 
-      {/* ─── IMPACT NUMBERS ─── */}
-      <section className="px-6 md:px-10 py-24 bg-black/30">
+      {/* ─── INTEGRATION LAYER ─── */}
+      <section className="px-6 md:px-10 py-24">
         <div className="max-w-7xl mx-auto">
-          <motion.div variants={fade} initial="hidden" whileInView="show" viewport={{ once: true }} className="mb-12">
-            <p className="text-gray-500 text-sm mb-2">Results — 90 days post-deploy</p>
-            <h2 className="text-3xl font-bold">The numbers from the live system.</h2>
-            <p className="text-gray-600 mt-2 text-sm">
-              Pulled from Mixpanel and Supabase dashboards. Not estimates.
+          <motion.div variants={fade} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-14">
+            <p className="text-[#4DA2FF] text-xs font-mono tracking-widest uppercase mb-3">Integrations</p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Intelligence layer meets<br />any communication channel</h2>
+            <p className="text-sm text-[#64748B] max-w-md mx-auto">
+              Your knowledge graph is the brain. WhatsApp, voice agents, web chat — these are just the mouths. Plug the brain in anywhere.
             </p>
           </motion.div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-            {IMPACT.map(item => (
-              <motion.div
-                key={item.label}
-                variants={fade} initial="hidden" whileInView="show" viewport={{ once: true }}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center hover:border-teal-500/30 transition"
-              >
-                <div className="text-4xl font-bold text-teal-400 tracking-tight">
-                  <CountUp to={item.to} format={item.format} />
-                </div>
-                <div className="text-sm font-medium text-white mt-2">{item.label}</div>
-                <div className="text-xs text-gray-600 mt-1 leading-tight">{item.sub}</div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── ABOUT THE BUILDER ─── */}
-      <section id="about" className="px-6 md:px-10 py-24">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            variants={stagger} initial="hidden" whileInView="show"
-            viewport={{ once: true, margin: '-80px' }}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center"
-          >
-            {/* Photo — replace /images/builder.jpg with your headshot */}
-            <motion.div variants={fade} className="order-2 lg:order-1">
-              <div
-                className="relative h-[480px] rounded-2xl overflow-hidden border border-white/10"
-                style={{
-                  backgroundImage: 'url(/images/builder.png)',
-                  backgroundSize: 'cover', backgroundPosition: 'top center',
-                  background: 'linear-gradient(135deg, #0d1f2d 0%, #081520 100%)',
-                }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-t from-[#060A0F] via-[#060A0F]/10 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <div className="rounded-xl bg-white/[0.07] backdrop-blur border border-white/10 p-4">
-                    <div className="text-sm font-semibold text-white">[Your Name]</div>
-                    <div className="text-xs text-teal-400 mt-0.5">AI Automation · n8n · LightRAG · Next.js</div>
-                    <div className="flex items-center gap-3 mt-3">
-                      <span className="text-xs text-gray-500">Based in India</span>
-                      <span className="w-1 h-1 rounded-full bg-gray-700" />
-                      <span className="flex items-center gap-1.5 text-xs text-teal-500">
-                        <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
-                        Available for projects
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Text */}
-            <motion.div variants={fade} className="order-1 lg:order-2 space-y-5">
-              <div>
-                <p className="text-gray-500 text-sm mb-3">About the builder</p>
-                <h2 className="text-3xl font-bold leading-snug">
-                  I build AI systems that run without babysitting.
-                </h2>
-              </div>
-              <p className="text-gray-400 leading-relaxed text-sm">
-                The Stellaris Group build on this page is real — the same system you can interact with right now, deployed across live channels with thousands of queries hitting it every day. I built it end-to-end: knowledge engineering, AI configuration, full-stack deployment, and the monitoring to know when something breaks.
-              </p>
-              <p className="text-gray-400 leading-relaxed text-sm">
-                My background is in workflow automation — n8n, APIs, no-code infrastructure. I use that foundation to build AI products that are actually maintainable. If a system needs a human in the loop to keep running, in my view it's not done.
-              </p>
-              <p className="text-gray-400 leading-relaxed text-sm">
-                I work with international clients on Upwork. If you have a knowledge problem — support, onboarding, sales ops, internal tools — and you want something live in weeks rather than quarters, tell me what you're solving.
-              </p>
-              <div className="flex items-center gap-5 pt-2 flex-wrap">
-                <Link
-                  href="/login"
-                  className="rounded-xl bg-teal-600 hover:bg-teal-500 px-6 py-3 text-sm font-semibold transition shadow-lg shadow-teal-900/30"
-                >
-                  Try the live system →
-                </Link>
-                <a
-                  href="#"
-                  className="text-sm text-gray-400 hover:text-white transition"
-                >
-                  Hire via Upwork ↗
-                </a>
-              </div>
-            </motion.div>
+          <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }}>
+            <IntegrationDiagram />
           </motion.div>
         </div>
       </section>
@@ -556,38 +587,38 @@ export default function HomePage() {
       {/* ─── CTA ─── */}
       <section className="px-6 md:px-10 py-24 relative overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-[700px] h-[300px] rounded-full bg-teal-600/5 blur-3xl" />
+          <div className="w-[600px] h-[300px] rounded-full bg-[#4DA2FF]/5 blur-3xl" />
         </div>
         <motion.div
           variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }}
           className="max-w-2xl mx-auto text-center relative"
         >
           <motion.h2 variants={fade} className="text-4xl font-bold mb-4">
-            What does your <span className="text-teal-400">version</span> look like?
+            Ready to build your <span className="text-[#4DA2FF]">knowledge agent?</span>
           </motion.h2>
-          <motion.p variants={fade} className="text-gray-400 mb-8 leading-relaxed text-sm max-w-md mx-auto">
-            Different documents. Different channels. Different problem. Same approach. Tell me what you're trying to solve.
+          <motion.p variants={fade} className="text-[#64748B] mb-8 leading-relaxed text-sm max-w-md mx-auto">
+            Your documents. Your team. Your use case. We build and deploy in 2 weeks. The same stack running in the demo above.
           </motion.p>
           <motion.div variants={fade} className="flex items-center justify-center gap-4 flex-wrap">
             <Link
-              href="/personas"
-              className="rounded-xl bg-teal-600 hover:bg-teal-500 px-8 py-3.5 text-sm font-semibold transition shadow-xl shadow-teal-900/30"
-            >
-              Explore all 5 case studies →
-            </Link>
-            <Link
               href="/login"
-              className="rounded-xl border border-white/15 hover:border-white/30 bg-white/[0.04] hover:bg-white/[0.07] px-8 py-3.5 text-sm font-medium text-gray-300 hover:text-white transition"
+              className="rounded-xl bg-[#4DA2FF] hover:bg-[#60B3FF] px-8 py-3.5 text-sm font-semibold transition shadow-xl shadow-[#4DA2FF]/25"
             >
-              Try the live system
+              Start with your docs →
             </Link>
+            <a
+              href="#demo"
+              className="rounded-xl border border-white/[0.12] hover:border-[#4DA2FF]/40 bg-white/[0.02] hover:bg-[#4DA2FF]/5 px-8 py-3.5 text-sm font-medium text-[#94A3B8] hover:text-white transition"
+            >
+              Try the live demo first
+            </a>
           </motion.div>
         </motion.div>
       </section>
 
       <footer className="border-t border-white/[0.05] px-6 md:px-10 py-6">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-600">
-          <span>stellaris.ai — Built by an independent AI automation specialist</span>
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-[#334155]">
+          <span>IKnowIt — AI Document Intelligence</span>
           <span>LightRAG · Supabase pgvector · OpenAI · Next.js · Vercel</span>
         </div>
       </footer>

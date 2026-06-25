@@ -63,7 +63,7 @@ export function FileUpload() {
   const statusMessages: Record<UploadStatus, string> = {
     idle: 'Drag & drop a PDF here, or click to browse',
     uploading: `Uploading ${filename}…`,
-    processing: `Building knowledge graph from ${filename}…`,
+    processing: `Reading your document — this takes about 30 seconds…`,
     ready: `✓ ${filename} is ready — go ask questions in chat!`,
     error: errorMsg || 'Something went wrong.',
   }

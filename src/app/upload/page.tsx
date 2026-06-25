@@ -21,8 +21,8 @@ export default function UploadPage() {
       <div className="w-full max-w-lg">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Upload Documents</h1>
-            <p className="text-sm text-gray-500 mt-1">Upload PDFs to your knowledge base</p>
+            <h1 className="text-2xl font-bold text-gray-900">Add Your Document</h1>
+            <p className="text-sm text-gray-500 mt-1">Upload a PDF — then chat with it instantly</p>
           </div>
           <Link href="/chat" className="text-sm text-blue-600 hover:underline">← Back to chat</Link>
         </div>

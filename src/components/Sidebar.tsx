@@ -60,7 +60,7 @@ export function Sidebar({ persona, onPersonaChange, systemPrompt, onSystemPrompt
 
       {/* Persona */}
       <div className="p-3 border-b border-gray-200">
-        <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Persona</label>
+        <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Assistant style</label>
         <select
           value={persona}
           onChange={e => onPersonaChange(e.target.value as Persona)}
@@ -76,7 +76,7 @@ export function Sidebar({ persona, onPersonaChange, systemPrompt, onSystemPrompt
           onClick={() => setPromptOpen(o => !o)}
           className="mt-2 w-full flex items-center justify-between text-xs text-gray-400 hover:text-gray-600 transition"
         >
-          <span>System prompt</span>
+          <span>AI instructions</span>
           <span>{promptOpen ? '▲' : '▼'}</span>
         </button>
         {promptOpen && (
@@ -94,7 +94,7 @@ export function Sidebar({ persona, onPersonaChange, systemPrompt, onSystemPrompt
       <nav className="flex-1 overflow-y-auto p-2">
         <p className="px-1 py-1 text-xs text-gray-400 uppercase tracking-wide">Conversations</p>
         {conversations.length === 0 && (
-          <p className="px-2 py-2 text-xs text-gray-400">No chats yet</p>
+          <p className="px-2 py-2 text-xs text-gray-400">Upload a PDF, then start your first chat</p>
         )}
         {conversations.map(c => (
           <div key={c.id} className="group flex items-center">
@@ -121,7 +121,7 @@ export function Sidebar({ persona, onPersonaChange, systemPrompt, onSystemPrompt
           href="/upload"
           className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-xs text-center text-gray-600 hover:bg-gray-100 transition"
         >
-          Upload PDF
+          Add a document
         </Link>
         <button
           onClick={signOut}
