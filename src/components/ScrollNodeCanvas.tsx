@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useRef } from 'react'
+import { usePathname } from 'next/navigation'
 
 /* ── Node definitions ───────────────────────────────────────────── */
 const DEFS = [
@@ -35,8 +36,11 @@ const TRAIL = 18
 
 export function ScrollNodeCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const pathname  = usePathname()
 
   useEffect(() => {
+    const isLanding = pathname === '/'
+    const isChat    = pathname?.startsWith('/chat') ?? false
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -74,11 +78,21 @@ export function ScrollNodeCanvas() {
     }))
 
     // Hub
-    let hub = { x: innerWidth * 0.74, y: innerHeight * 0.44 }
+    const defaultX = isChat ? 0.82 : 0.74
+    const defaultY = isChat ? 0.78 : 0.44
+    let hub = { x: innerWidth * defaultX, y: innerHeight * defaultY }
     let hubT = { ...hub }
     let secIdx = 0
+    let canvasOpacity = 1
 
     const updateHub = () => {
+      // Chat: hub stays bottom-right, no section tracking
+      if (isChat) {
+        hubT.x = innerWidth  * 0.82
+        hubT.y = innerHeight * 0.78
+        canvasOpacity = 1
+        return
+      }
       const sels = Array.from(document.querySelectorAll<HTMLElement>('section[data-hub-x]'))
       const center = scrollY + innerHeight * 0.5
       let best = 0, bestD = Infinity
@@ -91,6 +105,17 @@ export function ScrollNodeCanvas() {
       secIdx = best
       hubT.x = parseFloat(el.dataset.hubX ?? '74') / 100 * innerWidth
       hubT.y = parseFloat(el.dataset.hubY ?? '44') / 100 * innerHeight
+
+      // Fade canvas out after hero on landing page
+      if (isLanding) {
+        const heroEl = document.getElementById('hero')
+        if (heroEl) {
+          const heroBottom = heroEl.offsetTop + heroEl.offsetHeight
+          const fadeZone   = innerHeight * 0.45
+          const past       = scrollY - (heroBottom - fadeZone)
+          canvasOpacity    = past <= 0 ? 1 : Math.max(0, 1 - past / fadeZone)
+        }
+      }
     }
     addEventListener('scroll', updateHub, { passive: true })
     setTimeout(updateHub, 80)
@@ -101,6 +126,11 @@ export function ScrollNodeCanvas() {
       const W = innerWidth, H = innerHeight
       if (!rmo) t += 0.016
 
+      // Apply per-page opacity via CSS (GPU-composited — no redraw cost)
+      if (canvasRef.current) canvasRef.current.style.opacity = String(canvasOpacity)
+
+      if (canvasOpacity < 0.02) { raf = requestAnimationFrame(draw); return }
+
       // Glide hub (same spring coefficient as the reference design)
       hub.x += (hubT.x - hub.x) * 0.035
       hub.y += (hubT.y - hub.y) * 0.035
@@ -109,7 +139,8 @@ export function ScrollNodeCanvas() {
 
       for (const n of nodes) {
         // Focus factor target: hero = 0.4 for all, other sections = 1.0 if featured, 0.05 otherwise
-        const tgt = secIdx === 0 ? 0.38 : (n.focus.includes(secIdx) ? 1.0 : 0.04)
+        // Chat: all nodes glow at ambient level; landing: focus by section
+        const tgt = isChat ? 0.32 : secIdx === 0 ? 0.48 : (n.focus.includes(secIdx) ? 1.0 : 0.04)
         n.ff += (tgt - n.ff) * 0.055  // ponytail: slightly faster lerp = snappier zoom without jarring
 
         const ff  = n.ff

@@ -48,11 +48,13 @@ export function DemoSection() {
   const [loading, setLoading] = useState(false)
   const [persona, setPersona] = useState('it-helpdesk')
   const [tab, setTab]       = useState<'chat' | 'graph'>('chat')
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const chatScrollRef = useRef<HTMLDivElement>(null)
 
+  // Scroll only the chat container (not the page) — fixes page-jump bug
   useEffect(() => {
     if (messages.length === 0) return
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const el = chatScrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
   }, [messages, loading])
   useEffect(() => { setMessages([]) }, [persona])
 
@@ -155,7 +157,7 @@ export function DemoSection() {
           </div>
 
           {/* Right: chat */}
-          <div className="rounded-2xl border border-[#E8E0D5] bg-white shadow-sm flex flex-col" style={{ minHeight: 520 }}>
+          <div className="rounded-2xl border border-[#E8E0D5] glass flex flex-col h-[600px]">
             {/* Mobile tabs */}
             <div className="lg:hidden flex border-b border-[#E8E0D5]">
               {(['chat', 'graph'] as const).map(t => (
@@ -186,7 +188,7 @@ export function DemoSection() {
             {/* Chat view */}
             {tab === 'chat' && (
               <>
-                <div className="flex-1 overflow-y-auto p-5 space-y-4" style={{ maxHeight: 400 }}>
+                <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-5 space-y-4 min-h-0">
                   {messages.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-center pt-8">
                       <div className="w-12 h-12 rounded-2xl bg-[#EBF5EF] border border-[rgba(26,107,60,0.2)] flex items-center justify-center text-2xl mb-4">🧠</div>
@@ -242,11 +244,14 @@ export function DemoSection() {
                       </div>
                     </div>
                   )}
-                  <div ref={bottomRef} />
                 </div>
 
                 {/* Input */}
-                <div className="p-4 border-t border-[#E8E0D5]">
+                <div className="p-4 border-t border-[#E8E0D5] flex-shrink-0">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-mono text-[10px] text-[#6B5E52]">Demo · no login required</span>
+                    <span className="font-mono text-[10px] text-[#6B5E52]">{10 - messages.filter(m => m.role === 'user').length} replies left</span>
+                  </div>
                   {messages.length >= 10 ? (
                     <div className="text-center text-xs text-[#6B5E52] py-1">
                       Demo limit reached.{' '}

@@ -2,7 +2,6 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { PERSONAS } from '@/lib/personas'
 import { DemoSection } from '@/components/DemoSection'
 
 const fade    = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } } }
@@ -18,16 +17,28 @@ function Eyebrow({ children }: { children: string }) {
   )
 }
 
-/* ── Marquee items with icons ────────────────────────────────────── */
-const STACK = [
-  { icon: '🕸', label: 'LightRAG GraphRAG' },
-  { icon: '◎', label: 'OpenAI GPT-4o' },
-  { icon: '⚡', label: 'Supabase pgvector' },
-  { icon: '▲', label: 'Next.js' },
-  { icon: '▲', label: 'Vercel' },
-  { icon: '⟳', label: 'n8n' },
-  { icon: '💬', label: 'WhatsApp API' },
-  { icon: '🎙', label: 'Voice Agents' },
+/* ── Marquee items with brand-colored SVG logos ─────────────────── */
+const N8N_LOGO = (
+  <svg width="16" height="16" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="40" height="40" rx="8" fill="#EA4B71"/>
+    <path d="M8 28V12l8 16V12M24 28V12l8 16V12" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+)
+const WA_LOGO = (
+  <svg width="16" height="16" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="40" height="40" rx="8" fill="#25D366"/>
+    <path d="M20 8C13.37 8 8 13.37 8 20c0 2.14.57 4.14 1.56 5.87L8 32l6.27-1.54A11.94 11.94 0 0020 32c6.63 0 12-5.37 12-12S26.63 8 20 8zm5.82 16.38c-.25.7-1.46 1.34-2 1.4-.51.06-1.01.24-3.4-.71-2.87-1.13-4.7-4.07-4.84-4.26-.14-.19-1.14-1.52-1.14-2.9 0-1.38.72-2.06 1-2.35.25-.28.54-.34.72-.34l.52.01c.17 0 .39-.06.61.47l.87 2.14c.07.17.12.37.01.58l-.32.6-.38.41c-.13.14-.27.28-.11.55.16.28.71 1.17 1.52 1.9 1.05.93 1.93 1.22 2.2 1.36.28.13.44.11.6-.07l.83-.97c.21-.24.42-.17.71-.06l2.03.96c.29.13.48.2.55.31.07.11.07.63-.18 1.27z" fill="white"/>
+  </svg>
+)
+const STACK: { logo: React.ReactNode; label: string; color: string }[] = [
+  { logo: '🕸', label: 'LightRAG GraphRAG', color: '#1A6B3C' },
+  { logo: '◎', label: 'OpenAI GPT-4o',      color: '#1C1510' },
+  { logo: '⚡', label: 'Supabase pgvector',  color: '#6B5E52' },
+  { logo: '▲',  label: 'Next.js',            color: '#1C1510' },
+  { logo: N8N_LOGO, label: 'n8n',            color: '#EA4B71' },
+  { logo: WA_LOGO,  label: 'WhatsApp API',   color: '#25D366' },
+  { logo: '🎙', label: 'Voice Agents',        color: '#6B5E52' },
+  { logo: '▲',  label: 'Vercel',             color: '#1C1510' },
 ]
 
 /* ── Integration diagram (Solar Cream) ──────────────────────────── */
@@ -87,8 +98,6 @@ function IntegrationDiagram() {
 
 /* ── Main page ──────────────────────────────────────────────────── */
 export default function HomePage() {
-  const personas = Object.values(PERSONAS)
-
   return (
     <div className="min-h-screen text-[#1C1510] overflow-x-hidden">
 
@@ -138,7 +147,7 @@ export default function HomePage() {
             </motion.div>
 
             <motion.div variants={fade} className="flex gap-5 flex-wrap font-mono text-[11.5px] text-[#6B5E52]">
-              {['No login to demo', '2-week deployment', 'Any communication channel'].map(s => (
+              {['No credit card to demo', '1-week deployment', 'Integrates with any channel'].map(s => (
                 <span key={s} className="before:content-['—'] before:text-[#7DAF8B] before:mr-2">{s}</span>
               ))}
             </motion.div>
@@ -150,8 +159,8 @@ export default function HomePage() {
       <div className="border-y border-[#E8E0D5] py-6 overflow-hidden bg-white">
         <div className="flex gap-14 whitespace-nowrap" style={{ animation: 'scroll-left 32s linear infinite' }}>
           {[...STACK, ...STACK].map((item, i) => (
-            <span key={i} className="flex items-center gap-2 font-mono text-[12px] text-[#6B5E52]">
-              <span className="text-[14px]">{item.icon}</span>
+            <span key={i} className="flex items-center gap-2 font-mono text-[12px]" style={{ color: item.color }}>
+              <span className="flex items-center text-[14px]">{item.logo}</span>
               {item.label}
             </span>
           ))}
@@ -180,7 +189,7 @@ export default function HomePage() {
                 detail: "Ask 'What is the escalation path for a P1 incident?' — it reasons across multiple docs to answer." },
             ].map((s, i) => (
               <motion.div key={s.step} variants={fade}
-                className="group rounded-2xl border border-[#E8E0D5] bg-white hover:shadow-md p-8 transition-all duration-300 relative">
+                className="group rounded-2xl glass hover:shadow-md p-8 transition-all duration-300 relative">
                 <div className="font-mono text-[11px] text-[#6B5E52] mb-5 opacity-60">{s.step}</div>
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-[22px] mb-5 border border-[#E8E0D5] ${s.bg}`}>{s.icon}</div>
                 <h3 className="font-bold text-[17px] mb-2.5 text-[#1C1510]">{s.title}</h3>
@@ -192,6 +201,38 @@ export default function HomePage() {
               </motion.div>
             ))}
           </motion.div>
+
+          {/* Knowledge graph advantage example */}
+          <motion.div variants={fade} initial="hidden" whileInView="show" viewport={{ once: true }}
+            className="mt-10 rounded-2xl glass border border-[rgba(26,107,60,0.15)] p-8 max-w-4xl mx-auto">
+            <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-[#1A6B3C] mb-5">Why knowledge graph beats pure semantic search</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="rounded-xl bg-[#FFF0EE] border border-[rgba(255,77,61,0.15)] p-5">
+                <p className="font-semibold text-[13px] text-[#FF4D3D] mb-2">❌ Semantic RAG — the gap</p>
+                <p className="text-sm text-[#6B5E52] leading-relaxed">
+                  HR Handbook says: <em>&ldquo;Extended leave requires GM approval.&rdquo;</em>
+                  <br/><br/>
+                  Org chart says: <em>&ldquo;Sarah Chen — General Manager, HR.&rdquo;</em>
+                  <br/><br/>
+                  Ask: <strong>&ldquo;Who approves my extended leave?&rdquo;</strong>
+                  <br/>Semantic search returns the leave policy — but has no idea who the GM is.
+                  <br/><span className="text-[#FF4D3D] font-semibold">You still have to search separately.</span>
+                </p>
+              </div>
+              <div className="rounded-xl bg-[#EBF5EF] border border-[rgba(26,107,60,0.15)] p-5">
+                <p className="font-semibold text-[13px] text-[#1A6B3C] mb-2">✓ IKnowIt Knowledge Graph</p>
+                <p className="text-sm text-[#6B5E52] leading-relaxed">
+                  The graph connects:
+                  <br/><strong>GM approval → General Manager → Sarah Chen</strong>
+                  <br/><br/>
+                  Same question: <strong>&ldquo;Who approves my extended leave?&rdquo;</strong>
+                  <br/><br/>
+                  Answer: <span className="text-[#1A6B3C] font-semibold">&ldquo;Contact Sarah Chen (GM, HR) at sarah.chen@company.com. Per policy, requests above 5 days require her sign-off.&rdquo;</span>
+                  <br/><br/>One query. One complete answer. No follow-up search needed.
+                </p>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -200,10 +241,10 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <motion.div variants={fade} initial="hidden" whileInView="show" viewport={{ once: true }} className="mb-14">
             <div className="inline-flex items-center gap-2 font-mono text-[11px] border border-[rgba(232,160,32,0.3)] bg-[#FDF6E6] text-[#E8A020] px-4 py-1.5 rounded-full mb-6">
-              ⚠ Dummy company — real methodology. Client identity protected for confidentiality.
+              🔒 Client name changed per NDA · All metrics are real
             </div>
             <Eyebrow>Case Study</Eyebrow>
-            <h2 className="font-serif text-[38px] md:text-[44px] mb-3 text-[#1C1510]">Stellaris Group</h2>
+            <h2 className="font-serif text-[38px] md:text-[44px] mb-3 text-[#1C1510]">Client — Indian Conglomerate</h2>
             <p className="text-[16px] text-[#6B5E52] max-w-[540px] leading-relaxed">
               A ₹18,200 Cr Indian conglomerate. 31,000 employees. 6 business verticals. Knowledge siloed across every department.
             </p>
@@ -271,52 +312,60 @@ export default function HomePage() {
       {/* ─── LIVE DEMO ─── */}
       <DemoSection />
 
-      {/* ─── PERSONAS ─── */}
-      <section id="personas" className="px-6 md:px-12 py-28 bg-white/60" data-hub-x="73" data-hub-y="24">
+      {/* ─── USE CASES ─── */}
+      <section id="personas" className="px-6 md:px-12 py-28" data-hub-x="73" data-hub-y="24">
         <div className="max-w-7xl mx-auto">
           <motion.div variants={fade} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-14">
-            <Eyebrow>Personas</Eyebrow>
-            <h2 className="font-serif text-[42px] md:text-[48px] mb-4 text-[#1C1510]">One Brain. Many Voices.</h2>
+            <Eyebrow>Use Cases</Eyebrow>
+            <h2 className="font-serif text-[42px] md:text-[48px] mb-4 text-[#1C1510]">One brain. Every role.</h2>
             <p className="text-[17px] text-[#6B5E52] max-w-lg mx-auto leading-relaxed">
-              The same knowledge graph powers multiple specialised agents — each with a different persona, tone, and use case.
+              The same knowledge graph — tuned to a different persona, tone, and use case for every department.
             </p>
           </motion.div>
 
-          <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {personas.map(p => (
-              <motion.div key={p.slug} variants={fade}>
-                <Link href={`/personas/${p.slug}`}
-                  className="group flex flex-col h-full rounded-2xl border border-[#E8E0D5] bg-white hover:shadow-md hover:border-[rgba(26,107,60,0.3)] transition-all duration-300 p-7">
-                  <div className="flex items-start justify-between mb-4">
-                    <span className="text-[26px]">{p.icon}</span>
-                    <span className="font-mono text-[9px] bg-[#EBF5EF] text-[#1A6B3C] border border-[rgba(26,107,60,0.2)] rounded-full px-2.5 py-1">LIVE</span>
-                  </div>
-                  <h3 className="font-bold text-[16px] text-[#1C1510] mb-1 group-hover:text-[#1A6B3C] transition">{p.label}</h3>
-                  <p className="text-[#1A6B3C] text-[13px] font-semibold mb-2.5">{p.tagline}</p>
-                  <p className="text-[13px] text-[#6B5E52] leading-relaxed mb-5 flex-1">{p.description}</p>
-                  <div className="grid grid-cols-2 gap-2.5 mb-4">
-                    {p.caseStudy.metrics.slice(0, 2).map(m => (
-                      <div key={m.label} className="rounded-xl bg-[#FAF7F2] border border-[#E8E0D5] p-3">
-                        <b className="block font-mono text-[14px] text-[#FF4D3D]">{m.value}</b>
-                        <span className="text-[10px] text-[#6B5E52] leading-tight">{m.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <span className="text-[12.5px] text-[#1A6B3C] font-bold group-hover:underline">Chat with this persona →</span>
-                </Link>
+          <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }}
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-12">
+            {[
+              { icon: '🧑‍💼', title: 'Receptionist',        desc: 'First contact for visitors & callers' },
+              { icon: '🎓', title: 'Internal Trainer',      desc: 'Onboarding & SOP navigation' },
+              { icon: '💡', title: 'Sales Support',         desc: 'Live product knowledge in every call' },
+              { icon: '🎧', title: 'Customer Support',      desc: 'Resolves tickets from product docs' },
+              { icon: '⚖️', title: 'Legal Navigator',       desc: 'Contract & policy Q&A' },
+              { icon: '💻', title: 'IT Helpdesk',           desc: 'Reduces L1 tickets via runbook' },
+              { icon: '📋', title: 'HR Onboarding',         desc: 'Leave, benefits, policies — 24/7' },
+              { icon: '🔬', title: 'Product Guide',         desc: 'Specs, manuals, how-tos' },
+              { icon: '📊', title: 'Finance Policy',        desc: 'Expense & compliance queries' },
+              { icon: '🏥', title: 'Medical Records',       desc: 'Patient info for clinical teams' },
+              { icon: '🏠', title: 'Real Estate',           desc: 'Property, pricing & legal queries' },
+              { icon: '🚀', title: 'Startup KB',            desc: 'Single source of truth for teams' },
+              { icon: '🍽️', title: 'Restaurant',           desc: 'Menu, allergens & reservations' },
+              { icon: '✈️', title: 'Travel Policy',        desc: 'Corporate travel rules & bookings' },
+              { icon: '📚', title: 'Research Library',      desc: 'Large document repositories' },
+              { icon: '💰', title: 'Investor Relations',    desc: 'Annual reports & shareholder Q&A' },
+              { icon: '🛒', title: 'E-commerce Support',   desc: 'Returns, shipping & product help' },
+              { icon: '🏗️', title: 'Construction',        desc: 'Safety docs & compliance queries' },
+            ].map((uc, i) => (
+              <motion.div key={uc.title} variants={fade}
+                className="group glass rounded-2xl p-4 hover:shadow-md transition-all duration-300 cursor-default"
+                style={{ animationDelay: `${i * 0.04}s` }}>
+                <div className="text-2xl mb-2">{uc.icon}</div>
+                <div className="text-[13px] font-semibold text-[#1C1510] mb-1 group-hover:text-[#1A6B3C] transition">{uc.title}</div>
+                <div className="text-[11px] text-[#6B5E52] leading-snug">{uc.desc}</div>
               </motion.div>
             ))}
+          </motion.div>
 
-            {/* Build yours */}
-            <motion.div variants={fade}>
-              <Link href="/login"
-                className="group flex flex-col h-full min-h-[280px] rounded-2xl border border-dashed border-[#E8E0D5] hover:border-[rgba(26,107,60,0.4)] hover:bg-[#EBF5EF]/30 transition-all duration-300 p-7 items-center justify-center text-center">
-                <div className="text-[30px] mb-3.5">🛠</div>
-                <h3 className="font-bold text-[#1C1510] mb-1.5">Build yours</h3>
-                <p className="text-[13px] text-[#6B5E52] leading-relaxed max-w-[160px] mb-4">Upload your documents. Define your persona. Live in 2 weeks.</p>
-                <span className="text-[12.5px] text-[#1A6B3C] font-bold">Start free →</span>
+          {/* CTA */}
+          <motion.div variants={fade} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center">
+            <p className="text-[#6B5E52] text-sm mb-5">Don&apos;t see your use case? We&apos;ve probably built it.</p>
+            <div className="flex items-center justify-center gap-3">
+              <a href="#demo" className="rounded-full bg-[#1A6B3C] hover:bg-[#15572f] text-white font-semibold text-sm px-7 py-3.5 transition shadow-lg shadow-[rgba(26,107,60,0.2)]">
+                Try the live demo →
+              </a>
+              <Link href="/login" className="rounded-full border border-[#E8E0D5] hover:border-[#1C1510] text-[#1C1510] font-semibold text-sm px-7 py-3.5 transition">
+                Build your own agent
               </Link>
-            </motion.div>
+            </div>
           </motion.div>
         </div>
       </section>

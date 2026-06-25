@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase-server'
 
+export async function PATCH(req: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id, title } = await req.json().catch(() => ({}))
+  if (!id || !title) return NextResponse.json({ error: 'id and title required' }, { status: 400 })
+
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('conversations')
+    .update({ title: title.slice(0, 120) })
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .select('id, title')
+    .single()
+
+  if (error) return NextResponse.json({ error: 'DB error' }, { status: 500 })
+  return NextResponse.json(data)
+}
+
 export async function DELETE(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

@@ -3,6 +3,7 @@ import { DM_Serif_Display, Instrument_Sans, IBM_Plex_Mono } from "next/font/goog
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ScrollNodeCanvas } from "@/components/ScrollNodeCanvas";
+import { OrbBackground } from "@/components/OrbBackground";
 
 const dmSerif = DM_Serif_Display({
   variable: "--font-dm-serif",
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${dmSerif.variable} ${instrumentSans.variable} ${ibmMono.variable} h-full antialiased`}
     >
       <body className="h-full">
+        <OrbBackground />
         <ScrollNodeCanvas />
         <div className="relative z-10 h-full">
           <AuthProvider>{children}</AuthProvider>
