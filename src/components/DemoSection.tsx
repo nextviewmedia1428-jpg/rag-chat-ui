@@ -4,50 +4,59 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { GraphViz } from './GraphViz'
+import { useRenderStatus } from './RenderStatus'
 
 const DEMO_DOCS = [
-  { name: 'HR_Handbook_v7.2.pdf',    pages: 312, icon: '📋', chunks: 840 },
-  { name: 'IT_Runbook_v8.3.pdf',     pages:  89, icon: '💻', chunks: 412 },
-  { name: 'Customer_FAQ_v4.1.pdf',   pages:  48, icon: '🎧', chunks: 310 },
-  { name: 'Sales_Guide_Q1_2025.pdf', pages:  67, icon: '💼', chunks: 388 },
+  { name: 'Company_Overview.pdf',        pages: 8,  icon: '🏭', file: 'abc_electronics_company_overview.pdf'    },
+  { name: 'Product_Catalogue.pdf',       pages: 12, icon: '📦', file: 'abc_electronics_product_catalogue.pdf'   },
+  { name: 'Warranty_and_Service.pdf',    pages: 14, icon: '🔧', file: 'abc_electronics_warranty_and_service.pdf' },
+  { name: 'HR_Policy_Manual.pdf',        pages: 28, icon: '📋', file: 'abc_electronics_hr_policy.pdf'           },
 ]
 
 const PERSONAS_DEMO = [
-  { key: 'it-helpdesk',        label: 'IT Helpdesk',      icon: '💻' },
-  { key: 'hr-onboarding',      label: 'HR Onboarding',    icon: '📋' },
-  { key: 'customer-support',   label: 'Customer Support', icon: '🎧' },
-  { key: 'sales-intelligence', label: 'Sales Intel',      icon: '💼' },
+  { key: 'abc-general-secretary', label: 'General Secretary', icon: '🏢' },
+  { key: 'abc-hr-support',        label: 'HR Support',        icon: '📋' },
+  { key: 'abc-customer-support',  label: 'Customer Support',  icon: '🎧' },
+  { key: 'abc-sales-team',        label: 'Sales Assistant',   icon: '💼' },
+  { key: 'abc-sales-trainer',     label: 'Sales Trainer',     icon: '🎓' },
 ]
 
 const SUGGESTIONS: Record<string, string[]> = {
-  'it-helpdesk': [
-    'How do I reset my VPN password?',
-    "My laptop won't connect to corporate Wi-Fi",
-    'How do I request new software?',
-  ],
-  'hr-onboarding': [
+  'abc-general-secretary': [
+    'What does ABC Electronics manufacture and where?',
     'What is the maternity leave policy?',
-    'How many casual leaves do I get per year?',
-    'What happens to earned leave if I resign?',
+    'How do I register my ABC Electronics product for warranty?',
   ],
-  'customer-support': [
-    'How do I claim warranty for my HomeConnect Pro?',
-    'What is the refund policy?',
-    'My AirPure filter needs replacement — how?',
+  'abc-hr-support': [
+    'How many casual leaves do I get and can I carry them forward?',
+    'When is gratuity paid and how is it calculated?',
+    'What is the notice period for a Manager-level employee?',
   ],
-  'sales-intelligence': [
-    'What are the key differentiators vs WorkflowMax?',
-    'What objection response for "too expensive"?',
-    'What certifications does StellarOps hold?',
+  'abc-customer-support': [
+    'What does error code E1 mean on my front-load washing machine?',
+    'My refrigerator compressor warranty — how many years is it?',
+    'How do I book a service request for my AC?',
+  ],
+  'abc-sales-team': [
+    'What are the key features of the CoolPro 1.5T AC and its price?',
+    'Compare the ProWash Combo vs a standard front-load washer.',
+    'What commercial laundry machines does ABC Electronics offer?',
+  ],
+  'abc-sales-trainer': [
+    'Quiz me on the AirSmart AC — what makes it different?',
+    'How do I handle the objection "LG is better for washing machines"?',
+    'What is the key selling story for the CleanMaster dishwasher?',
   ],
 }
 
 export function DemoSection() {
+  const renderStatus = useRenderStatus()
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
   const [input, setInput]   = useState('')
   const [loading, setLoading] = useState(false)
-  const [persona, setPersona] = useState('it-helpdesk')
+  const [persona, setPersona] = useState('abc-general-secretary')
   const [tab, setTab]       = useState<'chat' | 'graph'>('chat')
+  const [activatedIds, setActivatedIds] = useState<string[]>([])
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
   // Scroll only the chat container (not the page) — fixes page-jump bug
@@ -72,7 +81,12 @@ export function DemoSection() {
         body: JSON.stringify({ message: trimmed, persona, history: messages }),
       })
       const data = await res.json()
-      setMessages(prev => [...prev, { role: 'assistant', content: data.reply ?? 'Something went wrong. Try again.' }])
+      const reply = data.reply ?? 'Something went wrong. Try again.'
+      setMessages(prev => [...prev, { role: 'assistant', content: reply }])
+      // Extract capitalized phrases from reply as graph entity hints
+      const entities = [...new Set((reply.match(/\b[A-Z][A-Za-z0-9]*(?:[\s-][A-Z][A-Za-z0-9]*)*\b/g) ?? [])
+        .filter((s: string) => s.length >= 3))]
+      setActivatedIds(entities as string[])
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Demo server is waking up — it may take 30s on first query. Try again.' }])
     } finally {
@@ -88,13 +102,29 @@ export function DemoSection() {
 
         {/* Header */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(26,107,60,0.2)] bg-[#EBF5EF] px-4 py-1.5 text-xs text-[#1A6B3C] font-mono mb-5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#1A6B3C] animate-pulse" />
-            Live Demo — No login required
+          <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-mono mb-5 transition-colors ${
+            renderStatus === 'ok'
+              ? 'border-[rgba(26,107,60,0.2)] bg-[#EBF5EF] text-[#1A6B3C]'
+              : renderStatus === 'warming'
+              ? 'border-[rgba(232,160,32,0.3)] bg-[#FDF6E6] text-[#E8A020]'
+              : renderStatus === 'offline'
+              ? 'border-[rgba(255,77,61,0.2)] bg-[#FFF0EE] text-[#FF4D3D]'
+              : 'border-[#E8E0D5] bg-[#FAF7F2] text-[#6B5E52]'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              renderStatus === 'ok' ? 'bg-[#1A6B3C] animate-pulse'
+              : renderStatus === 'warming' ? 'bg-[#E8A020] animate-pulse'
+              : renderStatus === 'offline' ? 'bg-[#FF4D3D]'
+              : 'bg-[#6B5E52] animate-pulse'
+            }`} />
+            {renderStatus === 'ok'       && 'Live — AI Graph Online · No login required'}
+            {renderStatus === 'warming'  && 'AI Graph Warming Up — Chat works via knowledge base'}
+            {renderStatus === 'offline'  && 'AI server offline — Chat works via knowledge base'}
+            {renderStatus === 'checking' && 'Connecting to AI Graph…'}
           </div>
           <h2 className="font-serif text-[36px] md:text-[42px] text-[#1C1510] mb-3">Try It Right Now</h2>
           <p className="text-sm text-[#6B5E52] max-w-md mx-auto">
-            Chatting with the Stellaris knowledge brain — trained on HR, IT, Customer Support, and Sales docs.
+            Chatting with ABC Electronics — trained on HR policy, product catalogue, warranty terms, and company overview.
           </p>
         </div>
 
@@ -128,22 +158,15 @@ export function DemoSection() {
                     <span className="text-base flex-shrink-0">{doc.icon}</span>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs text-[#1C1510] truncate">{doc.name}</div>
-                      <div className="text-[10px] text-[#6B5E52]">{doc.pages} pages · {doc.chunks} chunks</div>
+                      <div className="text-[10px] text-[#6B5E52]">{doc.pages} pages</div>
                     </div>
-                    <span className="text-[9px] text-[#1A6B3C] bg-[#EBF5EF] border border-[rgba(26,107,60,0.2)] rounded-full px-2 py-0.5 flex-shrink-0">Ready</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 pt-3 border-t border-[#F1EDE5] grid grid-cols-2 gap-2">
-                {[
-                  { label: 'Total pages',     val: '516' },
-                  { label: 'Chunks indexed',  val: '1,950' },
-                  { label: 'Entities mapped', val: '124' },
-                  { label: 'Relations',        val: '318' },
-                ].map(s => (
-                  <div key={s.label} className="rounded-lg bg-[#FAF7F2] border border-[#E8E0D5] p-2">
-                    <div className="text-sm font-bold text-[#1A6B3C]">{s.val}</div>
-                    <div className="text-[9px] text-[#6B5E52]">{s.label}</div>
+                    <a
+                      href={`/Mock%20Documents/${doc.file}`}
+                      download
+                      className="text-[9px] text-[#1A6B3C] bg-[#EBF5EF] border border-[rgba(26,107,60,0.2)] rounded-full px-2 py-0.5 flex-shrink-0 hover:bg-[#D8EDE1] transition"
+                    >
+                      ↓ PDF
+                    </a>
                   </div>
                 ))}
               </div>
@@ -152,7 +175,7 @@ export function DemoSection() {
             {/* Knowledge Graph — intentionally dark panel */}
             <div className="hidden lg:block rounded-2xl border border-[#E8E0D5] bg-[#1C1510] p-3 shadow-sm">
               <div className="text-[10px] text-[#7DAF8B] font-mono tracking-widest mb-2 uppercase">Knowledge Graph</div>
-              <GraphViz />
+              <GraphViz activatedIds={activatedIds} />
             </div>
           </div>
 
@@ -173,15 +196,17 @@ export function DemoSection() {
 
             {/* Desktop chat header */}
             <div className="hidden lg:flex items-center gap-3 px-5 py-3.5 border-b border-[#E8E0D5]">
-              <span className="w-2 h-2 rounded-full bg-[#1A6B3C] animate-pulse flex-shrink-0" />
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${renderStatus === 'ok' ? 'bg-[#1A6B3C] animate-pulse' : 'bg-[#E8A020] animate-pulse'}`} />
               <span className="text-sm font-medium text-[#1C1510]">IKnowIt Agent</span>
-              <span className="text-[10px] text-[#6B5E52] font-mono ml-auto">LightRAG + GPT-4o mini · dual retrieval</span>
+              <span className="text-[10px] text-[#6B5E52] font-mono ml-auto">
+                {renderStatus === 'ok' ? 'LightRAG + pgvector · dual retrieval' : 'Knowledge base · graph warming'}
+              </span>
             </div>
 
             {/* Mobile graph */}
             {tab === 'graph' && (
               <div className="lg:hidden flex-1 p-4 bg-[#1C1510] rounded-b-2xl">
-                <GraphViz />
+                <GraphViz activatedIds={activatedIds} />
               </div>
             )}
 
@@ -194,7 +219,7 @@ export function DemoSection() {
                       <div className="w-12 h-12 rounded-2xl bg-[#EBF5EF] border border-[rgba(26,107,60,0.2)] flex items-center justify-center text-2xl mb-4">🧠</div>
                       <div className="text-sm font-semibold text-[#1C1510] mb-1">Ask me anything</div>
                       <div className="text-xs text-[#6B5E52] mb-6 max-w-xs">
-                        I know everything across all 4 indexed documents for the {PERSONAS_DEMO.find(p => p.key === persona)?.label} persona.
+                        Trained on ABC Electronics documents — HR policy, product catalogue, warranty terms, and company overview. Ask me anything.
                       </div>
                       <div className="space-y-2 w-full max-w-sm">
                         {suggestions.map(s => (

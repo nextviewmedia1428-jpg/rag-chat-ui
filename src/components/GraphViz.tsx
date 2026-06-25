@@ -104,8 +104,8 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
 
     const setup = () => {
       const dpr = window.devicePixelRatio || 1
-      const lw  = canvas.offsetWidth
-      const lh  = canvas.offsetHeight
+      const lw  = canvas.offsetWidth  || 260   // ponytail: fallback prevents all nodes init at (0,0)
+      const lh  = canvas.offsetHeight || 380
       viewRef.current.dpr = dpr
       logRef.current = { w: lw, h: lh }
       canvas.width  = lw * dpr
@@ -148,8 +148,14 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
           if (a.id === b.id) return
           const pb = pos.get(b.id); if (!pb) return
           const dx = pa.x - pb.x, dy = pa.y - pb.y
-          const d = Math.sqrt(dx * dx + dy * dy) || 1
-          const f = 500 / (d * d)
+          const d2 = dx * dx + dy * dy
+          if (d2 < 0.01) {
+            // nodes at same position — random nudge so repulsion can act
+            pa.vx += (Math.random() - 0.5) * 3; pa.vy += (Math.random() - 0.5) * 3
+            return
+          }
+          const d = Math.sqrt(d2)
+          const f = 500 / d2
           pa.vx += (dx / d) * f; pa.vy += (dy / d) * f
         })
         pa.vx += (lw / 2 - pa.x) * 0.005

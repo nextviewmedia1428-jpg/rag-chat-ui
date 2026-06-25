@@ -69,8 +69,7 @@ export default function LoginPage() {
             <li className="flex gap-2"><span className="text-[#E8A020]">—</span> PDF only (no DOCX, images, or scanned docs)</li>
             <li className="flex gap-2"><span className="text-[#E8A020]">—</span> Max 4 MB per file (Vercel Hobby limit)</li>
             <li className="flex gap-2"><span className="text-[#E8A020]">—</span> 50,000 tokens / day across all chats</li>
-            <li className="flex gap-2"><span className="text-[#E8A020]">—</span> LightRAG may take ~30 s on first query (cold start)</li>
-            <li className="flex gap-2"><span className="text-[#E8A020]">—</span> Knowledge graph resets on backend redeploy</li>
+            <li className="flex gap-2"><span className="text-[#E8A020]">—</span> LightRAG knowledge graph not available on free tier — multi-tenant isolation requires a dedicated instance per user. Chat uses semantic search (pgvector) only.</li>
           </ul>
         </div>
       </div>
