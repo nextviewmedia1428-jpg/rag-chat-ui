@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
   const def = PERSONAS[persona] ?? PERSONAS['customer-support']
   const resolvedPrompt = def.promptTemplate.replace(/\{\{(\w+)\}\}/g, (_, k) => def.variables[k] ?? k)
 
+  let pgRaw: { content: string; similarity: number }[] = []
   let pgvectorChunks: string[] = []
   let lightragText = ''
 
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
       queryLightrag(message),
     ])
 
-    const pgRaw    = pgResult.status === 'fulfilled' ? pgResult.value : []
+    pgRaw          = pgResult.status === 'fulfilled' ? pgResult.value : []
     lightragText   = lrResult.status === 'fulfilled' ? lrResult.value : ''
     pgvectorChunks = pgRaw.map(r => r.content)
 
