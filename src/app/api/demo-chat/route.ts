@@ -98,6 +98,7 @@ async function queryPgvector(query: string, userId: string): Promise<{ content: 
     query_embedding: embRes.data[0].embedding,
     filter_user_id: userId,
     match_count: 10,
+    match_threshold: 0,   // no DB-level filter — log raw scores first, filter in app
   })
 
   if (error) {
