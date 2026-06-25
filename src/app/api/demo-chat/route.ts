@@ -5,9 +5,8 @@ import { createAdminClient } from '@/lib/supabase-server'
 
 const openai  = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 const LR      = process.env.LIGHTRAG_URL
-const DEMO_ID = process.env.DEMO_USER_ID  // UUID of the seeded demo Supabase user
+const DEMO_ID = process.env.DEMO_USER_ID
 
-// ponytail: embedded KB as fallback; real RAG when DEMO_USER_ID is seeded. 10-msg cap enforced client-side.
 export async function POST(req: NextRequest) {
   const { message, persona = 'customer-support', history = [] } = await req.json()
   if (!message?.trim()) return NextResponse.json({ error: 'message required' }, { status: 400 })
@@ -15,22 +14,31 @@ export async function POST(req: NextRequest) {
   const def = PERSONAS[persona] ?? PERSONAS['customer-support']
   const resolvedPrompt = def.promptTemplate.replace(/\{\{(\w+)\}\}/g, (_, k) => def.variables[k] ?? k)
 
-  // Try real RAG first (requires DEMO_USER_ID to be seeded)
-  let ragContext = ''
-  let semanticChunksOut: string[] = []
-  if (DEMO_ID) {
-    const [semantic, lightrag] = await Promise.allSettled([
-      semanticSearch(message),
-      lightragQuery(message),
-    ])
-    semanticChunksOut       = semantic.status === 'fulfilled' ? semantic.value : []
-    const lgContext          = lightrag.status === 'fulfilled' ? lightrag.value : ''
+  let pgvectorChunks: string[] = []
+  let lightragText = ''
 
-    const parts: string[] = []
-    if (lgContext)                  parts.push(`[Graph RAG]\n${lgContext}`)
-    if (semanticChunksOut.length)   parts.push(`[Semantic Search]\n${semanticChunksOut.join('\n\n---\n\n')}`)
-    ragContext = parts.join('\n\n===\n\n')
+  if (DEMO_ID) {
+    const [pgResult, lrResult] = await Promise.allSettled([
+      queryPgvector(message),
+      queryLightrag(message),
+    ])
+
+    pgvectorChunks = pgResult.status === 'fulfilled' ? pgResult.value : []
+    lightragText   = lrResult.status === 'fulfilled' ? lrResult.value : ''
+
+    console.log('\n═══ DEMO-CHAT RETRIEVAL ═══')
+    console.log('Query:', message)
+    console.log('\n── pgvector (top 5 semantic chunks) ──')
+    pgvectorChunks.forEach((c, i) => console.log(`[${i + 1}] ${c.slice(0, 200)}…`))
+    console.log('\n── LightRAG (GraphRAG mix) ──')
+    console.log(lightragText.slice(0, 600) || '(empty — Render cold or no graph)')
+    console.log('═══════════════════════════\n')
   }
+
+  const parts: string[] = []
+  if (lightragText)       parts.push(`[Graph RAG]\n${lightragText}`)
+  if (pgvectorChunks.length) parts.push(`[Semantic Search]\n${pgvectorChunks.join('\n\n---\n\n')}`)
+  const ragContext = parts.join('\n\n===\n\n')
 
   const knowledgeSection = ragContext
     ? `\n\n## Knowledge Base (retrieved)\n${ragContext}`
@@ -40,7 +48,7 @@ export async function POST(req: NextRequest) {
 
 Keep answers concise and grounded in the knowledge base above. This is a live demo — be helpful and impressive.`
 
-  const messages = [
+  const chatMessages = [
     ...(history as { role: string; content: string }[])
       .slice(-8)
       .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
@@ -51,41 +59,45 @@ Keep answers concise and grounded in the knowledge base above. This is a live de
     const res = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       max_tokens: 512,
-      messages: [{ role: 'system', content: systemPrompt }, ...messages],
+      messages: [{ role: 'system', content: systemPrompt }, ...chatMessages],
     })
     return NextResponse.json({
       reply: res.choices[0].message.content ?? '',
       source: ragContext ? 'rag' : 'embedded',
-      chunks: semanticChunksOut,
+      pgvectorChunks,
+      lightragText,
     })
   } catch {
     return NextResponse.json({ error: 'AI error' }, { status: 500 })
   }
 }
 
-async function semanticSearch(query: string): Promise<string[]> {
-  if (!DEMO_ID) return []
+async function queryPgvector(query: string): Promise<string[]> {
   const admin = createAdminClient()
   const embRes = await openai.embeddings.create({ model: 'text-embedding-3-small', input: query })
-  const { data } = await admin.rpc('match_chunks', {
+  const { data, error } = await admin.rpc('match_chunks', {
     query_embedding: embRes.data[0].embedding,
     filter_user_id: DEMO_ID,
     match_count: 5,
   })
+  if (error) { console.error('pgvector error:', error.message); return [] }
   return (data ?? []).map((r: { content: string }) => r.content)
 }
 
-async function lightragQuery(query: string): Promise<string> {
+async function queryLightrag(query: string): Promise<string> {
   if (!LR) return ''
   try {
     const res = await fetch(`${LR}/query`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, mode: 'mix', top_k: 5 }),
-      signal: AbortSignal.timeout(8000),
+      body: JSON.stringify({ query, mode: 'mix', top_k: 5, response_type: 'Multiple Paragraphs' }),
+      signal: AbortSignal.timeout(10000),
     })
-    if (!res.ok) return ''
+    if (!res.ok) { console.error('LightRAG query failed:', res.status); return '' }
     const data = await res.json()
     return data.response ?? data.result ?? ''
-  } catch { return '' }
+  } catch (e) {
+    console.error('LightRAG timeout/error:', e)
+    return ''
+  }
 }

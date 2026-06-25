@@ -56,7 +56,8 @@ export function DemoSection() {
   const [loading, setLoading] = useState(false)
   const [persona, setPersona] = useState('abc-general-secretary')
   const [activatedIds, setActivatedIds] = useState<string[]>([])
-  const [chunks, setChunks] = useState<string[]>([])
+  const [pgvectorChunks, setPgvectorChunks] = useState<string[]>([])
+  const [lightragText, setLightragText]     = useState<string>('')
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
   // Scroll only the chat container (not the page) — fixes page-jump bug
@@ -83,7 +84,8 @@ export function DemoSection() {
       const data = await res.json()
       const reply = data.reply ?? 'Something went wrong. Try again.'
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
-      if (data.chunks?.length) setChunks(data.chunks)
+      if (data.pgvectorChunks) setPgvectorChunks(data.pgvectorChunks)
+      if (data.lightragText)   setLightragText(data.lightragText)
       const entities = [...new Set((reply.match(/\b[A-Z][A-Za-z0-9]*(?:[\s-][A-Z][A-Za-z0-9]*)*\b/g) ?? [])
         .filter((s: string) => s.length >= 3))]
       setActivatedIds(entities as string[])
@@ -264,25 +266,55 @@ export function DemoSection() {
             </div>
           </div>
 
-          {/* Retrieved chunks panel */}
+          {/* Retrieved context panel */}
           <div className="rounded-2xl border border-[#E8E0D5] bg-white flex flex-col h-[560px]">
             <div className="px-4 py-3 border-b border-[#F1EDE5] flex-shrink-0">
-              <div className="text-[10px] text-[#1A6B3C] font-mono tracking-widest uppercase">Retrieved Chunks</div>
-              <div className="text-[10px] text-[#6B5E52] mt-0.5">pgvector semantic search</div>
+              <div className="text-[10px] text-[#1A6B3C] font-mono tracking-widest uppercase">Retrieved Context</div>
+              <div className="text-[10px] text-[#6B5E52] mt-0.5">pgvector + LightRAG · per query</div>
             </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
-              {chunks.length === 0 ? (
+            <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
+              {!pgvectorChunks.length && !lightragText ? (
                 <div className="h-full flex flex-col items-center justify-center text-center px-4">
                   <div className="text-2xl mb-2">🔍</div>
-                  <p className="text-xs text-[#6B5E52]">Relevant document chunks will appear here after your first query.</p>
+                  <p className="text-xs text-[#6B5E52]">Retrieved chunks and graph context appear here after your first query.</p>
                 </div>
               ) : (
-                chunks.map((c, i) => (
-                  <div key={i} className="rounded-xl border border-[#F1EDE5] bg-[#FAF7F2] p-3">
-                    <div className="text-[9px] font-mono text-[#1A6B3C] mb-1.5">chunk {i + 1}</div>
-                    <p className="text-[10px] text-[#6B5E52] leading-relaxed line-clamp-6">{c}</p>
+                <>
+                  {/* pgvector chunks */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[9px] font-mono text-white bg-[#1A6B3C] rounded px-1.5 py-0.5 uppercase">pgvector</span>
+                      <span className="text-[9px] text-[#6B5E52]">{pgvectorChunks.length} chunks</span>
+                    </div>
+                    {pgvectorChunks.length === 0 ? (
+                      <p className="text-[10px] text-[#6B5E52] italic px-1">No chunks matched — DEMO_USER_ID not set or no docs uploaded.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {pgvectorChunks.map((c, i) => (
+                          <div key={i} className="rounded-xl border border-[#F1EDE5] bg-[#FAF7F2] p-2.5">
+                            <div className="text-[9px] font-mono text-[#1A6B3C] mb-1">chunk {i + 1}</div>
+                            <p className="text-[10px] text-[#6B5E52] leading-relaxed line-clamp-5">{c}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ))
+
+                  {/* LightRAG graph response */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[9px] font-mono text-white bg-[#E8A020] rounded px-1.5 py-0.5 uppercase">GraphRAG</span>
+                      <span className="text-[9px] text-[#6B5E52]">LightRAG mix</span>
+                    </div>
+                    {!lightragText ? (
+                      <p className="text-[10px] text-[#6B5E52] italic px-1">No graph response — Render may be cold or graph empty.</p>
+                    ) : (
+                      <div className="rounded-xl border border-[#F1EDE5] bg-[#FDF6E6] p-2.5">
+                        <p className="text-[10px] text-[#6B5E52] leading-relaxed line-clamp-10">{lightragText}</p>
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           </div>
