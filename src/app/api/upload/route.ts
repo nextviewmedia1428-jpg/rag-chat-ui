@@ -125,7 +125,7 @@ async function processDocument(
         document_id: docId,
         user_id: userId,
         content,
-        embedding: JSON.stringify(embeddingRes.data[j].embedding),
+        embedding: embeddingRes.data[j].embedding,  // plain array — pgvector needs this, not JSON string
       }))
       await admin.from('document_chunks').insert(rows)
     }
