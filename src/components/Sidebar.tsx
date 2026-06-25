@@ -33,7 +33,7 @@ export function Sidebar({ persona, onPersonaChange, systemPrompt, onSystemPrompt
       .then(data => {
         if (!Array.isArray(data)) return
         setConversations(data)
-        if (pathname === '/chat' && data.length > 0) router.replace(`/chat/${data[0].id}`)
+        // ponytail: intentionally do NOT auto-redirect to first conv — user lands on /chat and picks one
       })
     fetch('/api/documents')
       .then(r => r.json())

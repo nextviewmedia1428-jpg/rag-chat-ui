@@ -55,8 +55,8 @@ export function DemoSection() {
   const [input, setInput]   = useState('')
   const [loading, setLoading] = useState(false)
   const [persona, setPersona] = useState('abc-general-secretary')
-  const [tab, setTab]       = useState<'chat' | 'graph'>('chat')
   const [activatedIds, setActivatedIds] = useState<string[]>([])
+  const [chunks, setChunks] = useState<string[]>([])
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
   // Scroll only the chat container (not the page) — fixes page-jump bug
@@ -83,7 +83,7 @@ export function DemoSection() {
       const data = await res.json()
       const reply = data.reply ?? 'Something went wrong. Try again.'
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
-      // Extract capitalized phrases from reply as graph entity hints
+      if (data.chunks?.length) setChunks(data.chunks)
       const entities = [...new Set((reply.match(/\b[A-Z][A-Za-z0-9]*(?:[\s-][A-Z][A-Za-z0-9]*)*\b/g) ?? [])
         .filter((s: string) => s.length >= 3))]
       setActivatedIds(entities as string[])
@@ -146,56 +146,35 @@ export function DemoSection() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-5">
+        {/* Top row: docs list + chat + chunks */}
+        <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_240px] gap-5 mb-5">
 
-          {/* Left: docs + graph */}
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-[#E8E0D5] bg-white p-4 shadow-sm">
-              <div className="text-[10px] text-[#1A6B3C] font-mono tracking-widest mb-3 uppercase">Indexed Documents</div>
-              <div className="space-y-0">
-                {DEMO_DOCS.map((doc, i) => (
-                  <div key={doc.name} className={`flex items-center gap-3 py-2.5 ${i < DEMO_DOCS.length - 1 ? 'border-b border-[#F1EDE5]' : ''}`}>
-                    <span className="text-base flex-shrink-0">{doc.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs text-[#1C1510] truncate">{doc.name}</div>
-                      <div className="text-[10px] text-[#6B5E52]">{doc.pages} pages</div>
-                    </div>
-                    <a
-                      href={`/Mock%20Documents/${doc.file}`}
-                      download
-                      className="text-[9px] text-[#1A6B3C] bg-[#EBF5EF] border border-[rgba(26,107,60,0.2)] rounded-full px-2 py-0.5 flex-shrink-0 hover:bg-[#D8EDE1] transition"
-                    >
-                      ↓ PDF
-                    </a>
+          {/* Docs list */}
+          <div className="rounded-2xl border border-[#E8E0D5] bg-white p-4 shadow-sm self-start">
+            <div className="text-[10px] text-[#1A6B3C] font-mono tracking-widest mb-3 uppercase">Indexed Documents</div>
+            <div className="space-y-0">
+              {DEMO_DOCS.map((doc, i) => (
+                <div key={doc.name} className={`flex items-center gap-3 py-2.5 ${i < DEMO_DOCS.length - 1 ? 'border-b border-[#F1EDE5]' : ''}`}>
+                  <span className="text-base flex-shrink-0">{doc.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-[#1C1510] truncate">{doc.name}</div>
+                    <div className="text-[10px] text-[#6B5E52]">{doc.pages} pages</div>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Knowledge Graph — intentionally dark panel */}
-            <div className="hidden lg:block rounded-2xl border border-[#E8E0D5] bg-[#1C1510] p-3 shadow-sm">
-              <div className="text-[10px] text-[#7DAF8B] font-mono tracking-widest mb-2 uppercase">Knowledge Graph</div>
-              <GraphViz activatedIds={activatedIds} />
+                  <a
+                    href={`/Mock%20Documents/${doc.file}`}
+                    download
+                    className="text-[9px] text-[#1A6B3C] bg-[#EBF5EF] border border-[rgba(26,107,60,0.2)] rounded-full px-2 py-0.5 flex-shrink-0 hover:bg-[#D8EDE1] transition"
+                  >
+                    ↓ PDF
+                  </a>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Right: chat */}
-          <div className="rounded-2xl border border-[#E8E0D5] glass flex flex-col h-[600px]">
-            {/* Mobile tabs */}
-            <div className="lg:hidden flex border-b border-[#E8E0D5]">
-              {(['chat', 'graph'] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={`flex-1 py-3 text-xs font-medium capitalize transition ${tab === t ? 'text-[#1A6B3C] border-b-2 border-[#1A6B3C]' : 'text-[#6B5E52]'}`}
-                >
-                  {t === 'chat' ? '💬 Chat' : '🕸 Knowledge Graph'}
-                </button>
-              ))}
-            </div>
-
-            {/* Desktop chat header */}
-            <div className="hidden lg:flex items-center gap-3 px-5 py-3.5 border-b border-[#E8E0D5]">
+          {/* Chat */}
+          <div className="rounded-2xl border border-[#E8E0D5] glass flex flex-col h-[560px]">
+            <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[#E8E0D5] flex-shrink-0">
               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${renderStatus === 'ok' ? 'bg-[#1A6B3C] animate-pulse' : 'bg-[#E8A020] animate-pulse'}`} />
               <span className="text-sm font-medium text-[#1C1510]">IKnowIt Agent</span>
               <span className="text-[10px] text-[#6B5E52] font-mono ml-auto">
@@ -203,106 +182,126 @@ export function DemoSection() {
               </span>
             </div>
 
-            {/* Mobile graph */}
-            {tab === 'graph' && (
-              <div className="lg:hidden flex-1 p-4 bg-[#1C1510] rounded-b-2xl">
-                <GraphViz activatedIds={activatedIds} />
-              </div>
-            )}
-
-            {/* Chat view */}
-            {tab === 'chat' && (
-              <>
-                <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-5 space-y-4 min-h-0">
-                  {messages.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-center pt-8">
-                      <div className="w-12 h-12 rounded-2xl bg-[#EBF5EF] border border-[rgba(26,107,60,0.2)] flex items-center justify-center text-2xl mb-4">🧠</div>
-                      <div className="text-sm font-semibold text-[#1C1510] mb-1">Ask me anything</div>
-                      <div className="text-xs text-[#6B5E52] mb-6 max-w-xs">
-                        Trained on ABC Electronics documents — HR policy, product catalogue, warranty terms, and company overview. Ask me anything.
-                      </div>
-                      <div className="space-y-2 w-full max-w-sm">
-                        {suggestions.map(s => (
-                          <button
-                            key={s}
-                            onClick={() => send(s)}
-                            className="w-full text-left text-xs text-[#6B5E52] border border-[#E8E0D5] hover:border-[rgba(26,107,60,0.3)] hover:text-[#1A6B3C] bg-[#FAF7F2] hover:bg-[#EBF5EF] rounded-xl px-4 py-2.5 transition"
-                          >
-                            {s} →
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <AnimatePresence initial={false}>
-                      {messages.map((m, i) => (
-                        <motion.div
-                          key={i}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                            m.role === 'user'
-                              ? 'bg-[#EBF5EF] text-[#1A6B3C] border border-[rgba(26,107,60,0.2)]'
-                              : 'bg-[#FAF7F2] text-[#1C1510] border border-[#E8E0D5]'
-                          }`}>
-                            {m.content}
-                          </div>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                  )}
-
-                  {loading && (
-                    <div className="flex justify-start">
-                      <div className="bg-[#FAF7F2] border border-[#E8E0D5] rounded-2xl px-5 py-3.5">
-                        <div className="flex gap-1.5">
-                          {[0, 1, 2].map(i => (
-                            <div
-                              key={i}
-                              className="w-1.5 h-1.5 rounded-full bg-[#1A6B3C]"
-                              style={{ animation: `bounce-dot 1s ease-in-out ${i * 0.18}s infinite` }}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Input */}
-                <div className="p-4 border-t border-[#E8E0D5] flex-shrink-0">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-mono text-[10px] text-[#6B5E52]">Demo · no login required</span>
-                    <span className="font-mono text-[10px] text-[#6B5E52]">{10 - messages.filter(m => m.role === 'user').length} replies left</span>
+            <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-5 space-y-4 min-h-0">
+              {messages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center pt-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#EBF5EF] border border-[rgba(26,107,60,0.2)] flex items-center justify-center text-2xl mb-4">🧠</div>
+                  <div className="text-sm font-semibold text-[#1C1510] mb-1">Ask me anything</div>
+                  <div className="text-xs text-[#6B5E52] mb-6 max-w-xs">
+                    Trained on ABC Electronics documents — HR policy, product catalogue, warranty terms, and company overview.
                   </div>
-                  {messages.length >= 10 ? (
-                    <div className="text-center text-xs text-[#6B5E52] py-1">
-                      Demo limit reached.{' '}
-                      <Link href="/login" className="text-[#1A6B3C] hover:underline">Sign in for unlimited access →</Link>
-                    </div>
-                  ) : (
-                    <form onSubmit={e => { e.preventDefault(); send(input) }} className="flex gap-2">
-                      <input
-                        value={input}
-                        onChange={e => setInput(e.target.value)}
-                        placeholder="Ask anything about the documents…"
-                        className="flex-1 bg-[#FAF7F2] border border-[#E8E0D5] focus:border-[rgba(26,107,60,0.4)] focus:outline-none rounded-xl px-4 py-2.5 text-sm text-[#1C1510] placeholder:text-[#6B5E52]/50 transition"
-                      />
+                  <div className="space-y-2 w-full max-w-sm">
+                    {suggestions.map(s => (
                       <button
-                        type="submit"
-                        disabled={loading || !input.trim()}
-                        className="rounded-xl bg-[#1A6B3C] hover:bg-[#15572f] disabled:opacity-40 disabled:cursor-not-allowed px-5 py-2.5 text-sm font-semibold text-white transition flex-shrink-0"
+                        key={s}
+                        onClick={() => send(s)}
+                        className="w-full text-left text-xs text-[#6B5E52] border border-[#E8E0D5] hover:border-[rgba(26,107,60,0.3)] hover:text-[#1A6B3C] bg-[#FAF7F2] hover:bg-[#EBF5EF] rounded-xl px-4 py-2.5 transition"
                       >
-                        →
+                        {s} →
                       </button>
-                    </form>
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </>
+              ) : (
+                <AnimatePresence initial={false}>
+                  {messages.map((m, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                        m.role === 'user'
+                          ? 'bg-[#EBF5EF] text-[#1A6B3C] border border-[rgba(26,107,60,0.2)]'
+                          : 'bg-[#FAF7F2] text-[#1C1510] border border-[#E8E0D5]'
+                      }`}>
+                        {m.content}
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
+
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="bg-[#FAF7F2] border border-[#E8E0D5] rounded-2xl px-5 py-3.5">
+                    <div className="flex gap-1.5">
+                      {[0, 1, 2].map(i => (
+                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#1A6B3C]"
+                          style={{ animation: `bounce-dot 1s ease-in-out ${i * 0.18}s infinite` }} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-[#E8E0D5] flex-shrink-0">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-mono text-[10px] text-[#6B5E52]">Demo · no login required</span>
+                <span className="font-mono text-[10px] text-[#6B5E52]">{10 - messages.filter(m => m.role === 'user').length} replies left</span>
+              </div>
+              {messages.length >= 10 ? (
+                <div className="text-center text-xs text-[#6B5E52] py-1">
+                  Demo limit reached.{' '}
+                  <Link href="/login" className="text-[#1A6B3C] hover:underline">Sign in for unlimited access →</Link>
+                </div>
+              ) : (
+                <form onSubmit={e => { e.preventDefault(); send(input) }} className="flex gap-2">
+                  <input
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    placeholder="Ask anything about the documents…"
+                    className="flex-1 bg-[#FAF7F2] border border-[#E8E0D5] focus:border-[rgba(26,107,60,0.4)] focus:outline-none rounded-xl px-4 py-2.5 text-sm text-[#1C1510] placeholder:text-[#6B5E52]/50 transition"
+                  />
+                  <button type="submit" disabled={loading || !input.trim()}
+                    className="rounded-xl bg-[#1A6B3C] hover:bg-[#15572f] disabled:opacity-40 disabled:cursor-not-allowed px-5 py-2.5 text-sm font-semibold text-white transition flex-shrink-0">
+                    →
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+
+          {/* Retrieved chunks panel */}
+          <div className="rounded-2xl border border-[#E8E0D5] bg-white flex flex-col h-[560px]">
+            <div className="px-4 py-3 border-b border-[#F1EDE5] flex-shrink-0">
+              <div className="text-[10px] text-[#1A6B3C] font-mono tracking-widest uppercase">Retrieved Chunks</div>
+              <div className="text-[10px] text-[#6B5E52] mt-0.5">pgvector semantic search</div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
+              {chunks.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center px-4">
+                  <div className="text-2xl mb-2">🔍</div>
+                  <p className="text-xs text-[#6B5E52]">Relevant document chunks will appear here after your first query.</p>
+                </div>
+              ) : (
+                chunks.map((c, i) => (
+                  <div key={i} className="rounded-xl border border-[#F1EDE5] bg-[#FAF7F2] p-3">
+                    <div className="text-[9px] font-mono text-[#1A6B3C] mb-1.5">chunk {i + 1}</div>
+                    <p className="text-[10px] text-[#6B5E52] leading-relaxed line-clamp-6">{c}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Knowledge Graph — full width below */}
+        <div className="rounded-2xl border border-[#E8E0D5] bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="text-[10px] text-[#1A6B3C] font-mono tracking-widest uppercase">Knowledge Graph</div>
+              <div className="text-[10px] text-[#6B5E52] mt-0.5">LightRAG entity relationships · highlighted nodes from last query</div>
+            </div>
+            {activatedIds.length > 0 && (
+              <span className="text-[9px] font-mono text-[#1A6B3C] bg-[#EBF5EF] border border-[rgba(26,107,60,0.2)] rounded-full px-2.5 py-1">
+                {activatedIds.length} active nodes
+              </span>
             )}
           </div>
+          <GraphViz activatedIds={activatedIds} />
         </div>
       </div>
     </section>

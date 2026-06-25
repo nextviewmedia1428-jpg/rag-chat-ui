@@ -178,7 +178,8 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
 
       // — Render: reset to DPR base, then apply view transform —
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      ctx.clearRect(0, 0, lw, lh)
+      ctx.fillStyle = '#F5F0E8'
+      ctx.fillRect(0, 0, lw, lh)
       ctx.translate(view.x, view.y)
       ctx.scale(view.scale, view.scale)
 
@@ -187,13 +188,13 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
         const ps = pos.get(e.source), pt = pos.get(e.target)
         if (!ps || !pt) return
         ctx.beginPath(); ctx.moveTo(ps.x, ps.y); ctx.lineTo(pt.x, pt.y)
-        ctx.strokeStyle = isFiltered ? 'rgba(255,255,255,0.45)' : 'rgba(200,200,200,0.13)'
-        ctx.lineWidth   = (isFiltered ? 1.2 : 0.8) / view.scale
+        ctx.strokeStyle = isFiltered ? 'rgba(26,107,60,0.5)' : 'rgba(28,21,16,0.1)'
+        ctx.lineWidth   = (isFiltered ? 1.2 : 0.7) / view.scale
         ctx.stroke()
         if (isFiltered && e.label) {
           const mx = (ps.x + pt.x) / 2, my = (ps.y + pt.y) / 2
           ctx.font      = `${8 / view.scale}px system-ui`
-          ctx.fillStyle = 'rgba(150,220,210,0.75)'
+          ctx.fillStyle = 'rgba(26,107,60,0.7)'
           ctx.textAlign = 'center'
           ctx.fillText(e.label, mx, my - 3 / view.scale)
         }
@@ -239,22 +240,22 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
         if (isFiltered || isHov) {
           const gr = (r + 10 + pulse * 6) / view.scale
           const g  = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, gr)
-          g.addColorStop(0, `rgba(255,255,255,${0.18 + pulse * 0.12})`)
-          g.addColorStop(1, 'rgba(255,255,255,0)')
+          g.addColorStop(0, `rgba(26,107,60,${0.12 + pulse * 0.08})`)
+          g.addColorStop(1, 'rgba(26,107,60,0)')
           ctx.beginPath(); ctx.arc(p.x, p.y, gr, 0, Math.PI * 2)
           ctx.fillStyle = g; ctx.fill()
         }
 
         ctx.beginPath(); ctx.arc(p.x, p.y, r / view.scale, 0, Math.PI * 2)
         ctx.fillStyle = (isFiltered || n.degree >= 4)
-          ? `rgba(255,255,255,${0.88 + pulse * 0.12})`
-          : `rgba(180,180,180,${0.55 + pulse * 0.1})`
+          ? `rgba(26,107,60,${0.75 + pulse * 0.15})`
+          : `rgba(125,175,139,${0.5 + pulse * 0.1})`
         ctx.fill()
 
         // Click ring on selected
         if (selectedNode?.id === n.id) {
           ctx.beginPath(); ctx.arc(p.x, p.y, (r + 4) / view.scale, 0, Math.PI * 2)
-          ctx.strokeStyle = 'rgba(94,234,212,0.8)'; ctx.lineWidth = 1.5 / view.scale; ctx.stroke()
+          ctx.strokeStyle = 'rgba(232,160,32,0.9)'; ctx.lineWidth = 1.5 / view.scale; ctx.stroke()
         }
 
         const showLabel = isFiltered || n.degree >= 4 || isHov
@@ -262,9 +263,9 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
           const fs = (isFiltered ? 11 : Math.max(9, Math.min(12, 8 + n.degree * 0.4))) / view.scale
           ctx.font        = `${isFiltered ? '500 ' : ''}${fs}px system-ui, sans-serif`
           ctx.textAlign   = 'center'
-          ctx.shadowColor = 'rgba(0,0,0,0.95)'
-          ctx.shadowBlur  = 6
-          ctx.fillStyle   = isFiltered ? 'rgba(255,255,255,0.95)' : 'rgba(215,215,215,0.85)'
+          ctx.shadowColor = 'rgba(245,240,232,0.9)'
+          ctx.shadowBlur  = 5
+          ctx.fillStyle   = isFiltered ? 'rgba(28,21,16,0.9)' : 'rgba(28,21,16,0.65)'
           ctx.fillText(n.id, p.x, p.y - (r + 5) / view.scale)
           ctx.shadowBlur  = 0
         }
@@ -350,7 +351,7 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
   }
 
   return (
-    <div className="relative w-full rounded-xl overflow-hidden bg-[#080b0b] border border-white/[0.07]" style={{ height: 380 }}>
+    <div className="relative w-full rounded-2xl overflow-hidden bg-[#F5F0E8] border border-[#E8E0D5]" style={{ height: 420 }}>
       <canvas
         ref={canvasRef}
         className="w-full h-full select-none"
@@ -362,15 +363,16 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
         onWheel={onWheel}
       />
 
-      {/* Reset zoom button */}
+      {/* Reset zoom button — type="button" prevents accidental form submit */}
       <button
-        onClick={resetView}
-        className="absolute top-2.5 right-2.5 rounded-md bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 px-2 py-1 text-[9px] text-gray-400 hover:text-white transition font-mono"
+        type="button"
+        onClick={() => { viewRef.current = { ...viewRef.current, x: 0, y: 0, scale: 1 } }}
+        className="absolute top-2.5 right-2.5 rounded-lg bg-white border border-[#E8E0D5] hover:border-[rgba(26,107,60,0.4)] hover:bg-[#EBF5EF] px-2.5 py-1 text-[9px] text-[#6B5E52] hover:text-[#1A6B3C] transition font-mono shadow-sm"
       >
         reset view
       </button>
 
-      {/* Hover tooltip — only when no node selected */}
+      {/* Hover tooltip */}
       {tooltip && !selectedNode && (
         <div
           className="absolute pointer-events-none z-20"
@@ -380,49 +382,42 @@ export function GraphViz({ activatedIds = [] }: { activatedIds?: string[] }) {
             transform: tooltip.flip ? 'translateX(-100%)' : undefined,
           }}
         >
-          <div className="rounded-lg bg-[#0d1515]/95 border border-white/10 backdrop-blur-sm px-3 py-2.5 shadow-2xl w-52">
-            <div className="text-xs font-semibold text-white mb-1">{tooltip.node.id}</div>
+          <div className="rounded-xl bg-white border border-[#E8E0D5] shadow-lg px-3 py-2.5 w-52">
+            <div className="text-xs font-semibold text-[#1C1510] mb-1">{tooltip.node.id}</div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-teal-400 bg-teal-950/70 border border-teal-800/40 rounded px-1.5 py-0.5 uppercase">{tooltip.node.type}</span>
-              <span className="text-[9px] text-gray-500">{tooltip.node.degree} link{tooltip.node.degree !== 1 ? 's' : ''}</span>
-              <span className="text-[9px] text-gray-600 italic">click for full text</span>
+              <span className="text-[9px] text-[#1A6B3C] bg-[#EBF5EF] border border-[rgba(26,107,60,0.2)] rounded px-1.5 py-0.5 uppercase">{tooltip.node.type}</span>
+              <span className="text-[9px] text-[#6B5E52]">{tooltip.node.degree} link{tooltip.node.degree !== 1 ? 's' : ''}</span>
+              <span className="text-[9px] text-[#6B5E52] italic">click for details</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Selected node — full info panel */}
+      {/* Selected node panel */}
       {selectedNode && (
-        <div className="absolute bottom-0 left-0 right-0 bg-[#0a1212]/97 border-t border-white/[0.08] backdrop-blur-md z-30 max-h-52 flex flex-col">
-          <div className="flex items-start justify-between px-4 pt-3 pb-2 border-b border-white/[0.06]">
+        <div className="absolute bottom-0 left-0 right-0 bg-white/95 border-t border-[#E8E0D5] backdrop-blur-md z-30 max-h-48 flex flex-col">
+          <div className="flex items-start justify-between px-4 pt-3 pb-2 border-b border-[#F1EDE5]">
             <div>
-              <div className="text-sm font-semibold text-white leading-snug">{selectedNode.id}</div>
+              <div className="text-sm font-semibold text-[#1C1510] leading-snug">{selectedNode.id}</div>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-[9px] text-teal-400 bg-teal-950/60 border border-teal-800/40 rounded px-1.5 py-0.5 uppercase">{selectedNode.type}</span>
-                <span className="text-[9px] text-gray-500">{selectedNode.degree} connection{selectedNode.degree !== 1 ? 's' : ''}</span>
-                {selectedNode.filePath && (
-                  <span className="text-[9px] text-gray-600 truncate max-w-[140px]">📄 {selectedNode.filePath}</span>
-                )}
+                <span className="text-[9px] text-[#1A6B3C] bg-[#EBF5EF] border border-[rgba(26,107,60,0.2)] rounded px-1.5 py-0.5 uppercase">{selectedNode.type}</span>
+                <span className="text-[9px] text-[#6B5E52]">{selectedNode.degree} connection{selectedNode.degree !== 1 ? 's' : ''}</span>
               </div>
             </div>
-            <button
-              onClick={() => setSelectedNode(null)}
-              className="text-gray-500 hover:text-white text-xl leading-none ml-4 mt-0.5 flex-shrink-0"
-            >
-              ×
-            </button>
+            <button type="button" onClick={() => setSelectedNode(null)}
+              className="text-[#6B5E52] hover:text-[#1C1510] text-xl leading-none ml-4 mt-0.5 flex-shrink-0">×</button>
           </div>
           <div className="overflow-y-auto px-4 py-3">
-            <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap">{selectedNode.description}</p>
+            <p className="text-xs text-[#6B5E52] leading-relaxed whitespace-pre-wrap">{selectedNode.description}</p>
           </div>
         </div>
       )}
 
-      {/* Footer */}
+      {/* Footer hint */}
       <div className="absolute bottom-2.5 left-3 pointer-events-none" style={{ display: selectedNode ? 'none' : undefined }}>
         {activatedIds.length > 0
-          ? <span className="text-[9px] text-white/35 font-mono">{activatedIds.length} nodes · last query · scroll to zoom · drag to pan</span>
-          : <span className="text-[9px] text-white/20 font-mono">scroll to zoom · drag to pan · click node for details</span>
+          ? <span className="text-[9px] text-[#6B5E52]/50 font-mono">{activatedIds.length} relevant nodes · scroll to zoom · drag to pan</span>
+          : <span className="text-[9px] text-[#6B5E52]/40 font-mono">scroll to zoom · drag to pan · click node for details</span>
         }
       </div>
     </div>

@@ -17,17 +17,18 @@ export async function POST(req: NextRequest) {
 
   // Try real RAG first (requires DEMO_USER_ID to be seeded)
   let ragContext = ''
+  let semanticChunksOut: string[] = []
   if (DEMO_ID) {
     const [semantic, lightrag] = await Promise.allSettled([
       semanticSearch(message),
       lightragQuery(message),
     ])
-    const semanticChunks = semantic.status === 'fulfilled' ? semantic.value : []
-    const lgContext       = lightrag.status === 'fulfilled' ? lightrag.value : ''
+    semanticChunksOut       = semantic.status === 'fulfilled' ? semantic.value : []
+    const lgContext          = lightrag.status === 'fulfilled' ? lightrag.value : ''
 
     const parts: string[] = []
-    if (lgContext)             parts.push(`[Graph RAG]\n${lgContext}`)
-    if (semanticChunks.length) parts.push(`[Semantic Search]\n${semanticChunks.join('\n\n---\n\n')}`)
+    if (lgContext)                  parts.push(`[Graph RAG]\n${lgContext}`)
+    if (semanticChunksOut.length)   parts.push(`[Semantic Search]\n${semanticChunksOut.join('\n\n---\n\n')}`)
     ragContext = parts.join('\n\n===\n\n')
   }
 
@@ -55,6 +56,7 @@ Keep answers concise and grounded in the knowledge base above. This is a live de
     return NextResponse.json({
       reply: res.choices[0].message.content ?? '',
       source: ragContext ? 'rag' : 'embedded',
+      chunks: semanticChunksOut,
     })
   } catch {
     return NextResponse.json({ error: 'AI error' }, { status: 500 })
