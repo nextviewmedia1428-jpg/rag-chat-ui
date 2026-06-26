@@ -60,9 +60,12 @@ export async function POST(req: NextRequest) {
   const identityBlock = buildIdentityBlock(agent_config)
 
   const kbSection = knowledge_base?.trim() ? `\n\n## Built-in Knowledge Base\n${knowledge_base}` : ''
+  const hasDocFilter = (connected_doc_ids ?? []).length > 0
   const ctxSection = semanticContext.length
     ? `\n\n## Uploaded Document Context (retrieved)\n${semanticContext.join('\n\n---\n\n')}`
-    : '\n\nNo documents have been uploaded or connected to this chat yet. Let the user know they can upload PDFs and connect them to a chat to get document-grounded answers.'
+    : hasDocFilter
+      ? '\n\nDocuments are connected but no relevant chunks were found for this query. Let the user know.'
+      : '\n\nINSTRUCTION: No documents are connected to this chat. You MUST respond with exactly this message and nothing else: "To get started, please connect a document to this chat. Here\'s how: look for the **\'Connect docs to this chat\'** section in the left sidebar — tick the checkbox next to any document you\'d like me to search. If you haven\'t uploaded any documents yet, click **\'Add document\'** at the bottom of the sidebar to upload a PDF. Once a document is connected, I\'ll answer your questions directly from it."'
 
   const systemPrompt = `${basePrompt}${identityBlock}${kbSection}${ctxSection}${GUARDRAIL}`
 
