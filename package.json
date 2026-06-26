@@ -24,6 +24,7 @@
     "@types/pdfkit": "^0.17.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "md-to-pdf": "^5.2.5",
     "pdfkit": "^0.19.1",
     "tailwindcss": "^4",
     "typescript": "^5"

@@ -49,6 +49,24 @@ const SUGGESTIONS: Record<string, string[]> = {
   ],
 }
 
+// Highlight query keywords in text — superficial UI only, doesn't affect retrieval
+function renderHighlighted(text: string, query: string) {
+  if (!query.trim()) return <>{text}</>
+  const words = [...new Set(query.toLowerCase().split(/\W+/).filter(w => w.length >= 4))]
+  if (!words.length) return <>{text}</>
+  const re = new RegExp(`(${words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi')
+  const parts = text.split(re)
+  return (
+    <>
+      {parts.map((p, i) =>
+        i % 2 === 1
+          ? <mark key={i} className="bg-[#FDF6E6] text-[#C47A00] rounded px-0.5 not-italic font-medium">{p}</mark>
+          : p
+      )}
+    </>
+  )
+}
+
 export function DemoSection() {
   const renderStatus = useRenderStatus()
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
@@ -59,15 +77,15 @@ export function DemoSection() {
   const [pgvectorChunks, setPgvectorChunks] = useState<{ content: string; similarity: number }[]>([])
   const [lightragText, setLightragText]     = useState<string>('')
   const [lightragLoading, setLightragLoading] = useState(false)
+  const [lastQuery, setLastQuery] = useState('')
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
-  // Scroll only the chat container (not the page) — fixes page-jump bug
   useEffect(() => {
     if (messages.length === 0) return
     const el = chatScrollRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, loading])
-  useEffect(() => { setMessages([]) }, [persona])
+  useEffect(() => { setMessages([]); setPgvectorChunks([]); setLightragText(''); setLastQuery('') }, [persona])
 
   async function send(text: string) {
     const trimmed = text.trim()
@@ -75,6 +93,7 @@ export function DemoSection() {
     const userMsg = { role: 'user' as const, content: trimmed }
     setMessages(prev => [...prev, userMsg])
     setInput('')
+    setLastQuery(trimmed)
     setLoading(true)
     try {
       const res = await fetch('/api/demo-chat', {
@@ -109,7 +128,7 @@ export function DemoSection() {
     }
   }
 
-  const suggestions = SUGGESTIONS[persona] ?? SUGGESTIONS['it-helpdesk']
+  const suggestions = SUGGESTIONS[persona] ?? SUGGESTIONS['abc-general-secretary']
 
   return (
     <section id="demo" className="px-6 md:px-10 py-24" data-hub-x="24" data-hub-y="62">
@@ -185,6 +204,10 @@ export function DemoSection() {
                 </div>
               ))}
             </div>
+            {/* Download encouragement */}
+            <p className="text-[10px] text-[#6B5E52] mt-3 pt-3 border-t border-[#F1EDE5] leading-relaxed">
+              ↓ Download any PDF to see what the agent has access to — then ask it questions about that document.
+            </p>
           </div>
 
           {/* Chat */}
@@ -293,17 +316,17 @@ export function DemoSection() {
                 </div>
               ) : (
                 <>
-                  {/* pgvector chunks */}
+                  {/* pgvector — top 2 only (item 5) */}
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-[9px] font-mono text-white bg-[#1A6B3C] rounded px-1.5 py-0.5 uppercase">pgvector</span>
-                      <span className="text-[9px] text-[#6B5E52]">{pgvectorChunks.length} chunks</span>
+                      <span className="text-[9px] text-[#6B5E52]">top 2 of {pgvectorChunks.length}</span>
                     </div>
                     {pgvectorChunks.length === 0 ? (
-                      <p className="text-[10px] text-[#6B5E52] italic px-1">No chunks matched — DEMO_USER_ID not set or no docs uploaded.</p>
+                      <p className="text-[10px] text-[#6B5E52] italic px-1">No chunks matched.</p>
                     ) : (
                       <div className="space-y-2">
-                        {pgvectorChunks.map((r, i) => (
+                        {pgvectorChunks.slice(0, 2).map((r, i) => (
                           <div key={i} className="rounded-xl border border-[#F1EDE5] bg-[#FAF7F2] p-2.5">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-[9px] font-mono text-[#1A6B3C]">chunk {i + 1}</span>
@@ -311,7 +334,9 @@ export function DemoSection() {
                                 {(r.similarity * 100).toFixed(1)}% match
                               </span>
                             </div>
-                            <p className="text-[10px] text-[#6B5E52] leading-relaxed line-clamp-5">{r.content}</p>
+                            <p className="text-[10px] text-[#6B5E52] leading-relaxed line-clamp-5">
+                              {renderHighlighted(r.content, lastQuery)}
+                            </p>
                           </div>
                         ))}
                       </div>
@@ -330,7 +355,9 @@ export function DemoSection() {
                       <p className="text-[10px] text-[#6B5E52] italic px-1">No graph response — Render may be cold or graph empty.</p>
                     ) : (
                       <div className="rounded-xl border border-[#F1EDE5] bg-[#FDF6E6] p-2.5">
-                        <p className="text-[10px] text-[#6B5E52] leading-relaxed line-clamp-10">{lightragText}</p>
+                        <p className="text-[10px] text-[#6B5E52] leading-relaxed line-clamp-10">
+                          {renderHighlighted(lightragText, lastQuery)}
+                        </p>
                       </div>
                     )}
                   </div>

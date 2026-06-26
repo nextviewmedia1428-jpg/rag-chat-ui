@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { Conversation, Persona, PERSONA_LABELS } from '@/lib/types'
 import { useAuth } from './AuthProvider'
+import { useChatContext } from '@/lib/chat-context'
 
 interface Props {
   persona: Persona
@@ -15,17 +16,23 @@ interface Props {
 
 interface Doc { id: string; filename: string; status: string }
 
+const TONE_OPTIONS = ['Professional', 'Friendly', 'Formal', 'Direct']
+
 export function Sidebar({ persona, onPersonaChange, systemPrompt, onSystemPromptChange }: Props) {
   const { signOut } = useAuth()
   const router   = useRouter()
   const pathname = usePathname()
+  const { agentConfig, setAgentConfig, connectedDocIds, setConnectedDocIds } = useChatContext()
+
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [docs,          setDocs]          = useState<Doc[]>([])
-  const [promptOpen,    setPromptOpen]    = useState(false)
-  const [docsOpen,      setDocsOpen]      = useState(false)
   const [editingId,     setEditingId]     = useState<string | null>(null)
   const [editTitle,     setEditTitle]     = useState('')
+  const [docsOpen,      setDocsOpen]      = useState(false)
   const editRef = useRef<HTMLInputElement>(null)
+
+  // Extract current conversation ID from pathname
+  const convId = pathname.startsWith('/chat/') ? pathname.split('/')[2] : null
 
   useEffect(() => {
     fetch('/api/conversations')
@@ -33,12 +40,19 @@ export function Sidebar({ persona, onPersonaChange, systemPrompt, onSystemPrompt
       .then(data => {
         if (!Array.isArray(data)) return
         setConversations(data)
-        // ponytail: intentionally do NOT auto-redirect to first conv — user lands on /chat and picks one
+        // ponytail: intentionally do NOT auto-redirect — user picks their conversation
       })
     fetch('/api/documents')
       .then(r => r.json())
       .then(data => Array.isArray(data) && setDocs(data))
   }, [pathname, router])
+
+  // Load connected doc IDs when conversation changes
+  useEffect(() => {
+    if (!convId) { setConnectedDocIds([]); return }
+    const conv = conversations.find(c => c.id === convId)
+    if (conv) setConnectedDocIds(conv.document_ids ?? [])
+  }, [convId, conversations])
 
   useEffect(() => {
     if (editingId) editRef.current?.focus()
@@ -71,10 +85,24 @@ export function Sidebar({ persona, onPersonaChange, systemPrompt, onSystemPrompt
     setConversations(prev => prev.map(c => c.id === id ? { ...c, title } : c))
   }
 
+  async function toggleDoc(docId: string) {
+    if (!convId) return
+    const next = connectedDocIds.includes(docId)
+      ? connectedDocIds.filter(id => id !== docId)
+      : [...connectedDocIds, docId]
+    setConnectedDocIds(next)
+    setConversations(prev => prev.map(c => c.id === convId ? { ...c, document_ids: next } : c))
+    await fetch('/api/conversations', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: convId, document_ids: next }),
+    })
+  }
+
   return (
-    <aside className="flex w-64 flex-col border-r border-[#E8E0D5] bg-[#FAF7F2] h-full">
+    <aside className="flex w-64 flex-col border-r border-[#E8E0D5] bg-[#FAF7F2] h-full overflow-y-auto">
       {/* Header */}
-      <div className="p-3 border-b border-[#E8E0D5]">
+      <div className="p-3 border-b border-[#E8E0D5] flex-shrink-0">
         <Link href="/" className="block font-serif italic text-[15px] text-[#1C1510] mb-3 hover:text-[#1A6B3C] transition">
           ← i<span className="text-[#1A6B3C]">Know</span>It
         </Link>
@@ -84,26 +112,92 @@ export function Sidebar({ persona, onPersonaChange, systemPrompt, onSystemPrompt
         </button>
       </div>
 
-      {/* Persona */}
-      <div className="p-3 border-b border-[#E8E0D5]">
+      {/* Persona + Agent Configuration */}
+      <div className="p-3 border-b border-[#E8E0D5] flex-shrink-0">
         <label className="block text-[10px] font-mono text-[#6B5E52] mb-1.5 uppercase tracking-widest">Assistant style</label>
         <select value={persona} onChange={e => onPersonaChange(e.target.value as Persona)}
-          className="w-full rounded-xl border border-[#E8E0D5] bg-white px-3 py-2 text-sm text-[#1C1510] focus:outline-none focus:border-[rgba(26,107,60,0.4)] transition">
+          className="w-full rounded-xl border border-[#E8E0D5] bg-white px-3 py-2 text-sm text-[#1C1510] focus:outline-none focus:border-[rgba(26,107,60,0.4)] transition mb-3">
           {Object.entries(PERSONA_LABELS).map(([key, label]) => (
             <option key={key} value={key}>{label}</option>
           ))}
         </select>
-        <button onClick={() => setPromptOpen(o => !o)}
-          className="mt-2.5 w-full flex items-center justify-between text-[11px] text-[#6B5E52] hover:text-[#1C1510] transition">
-          <span>AI instructions</span>
-          <span className="font-mono">{promptOpen ? '▲' : '▼'}</span>
-        </button>
-        {promptOpen && (
-          <textarea value={systemPrompt} onChange={e => onSystemPromptChange(e.target.value)} rows={5}
-            placeholder="Describe how the assistant should behave…"
-            className="mt-1.5 w-full rounded-xl border border-[#E8E0D5] bg-white px-3 py-2 text-xs text-[#1C1510] resize-none focus:outline-none focus:border-[rgba(26,107,60,0.4)] transition placeholder:text-[#6B5E52]/40" />
-        )}
+
+        {/* Agent variables — always visible below persona */}
+        <div className="space-y-2 mb-3">
+          <div>
+            <label className="block text-[10px] font-mono text-[#6B5E52] mb-1">Agent name</label>
+            <input
+              type="text"
+              value={agentConfig.name}
+              onChange={e => setAgentConfig({ ...agentConfig, name: e.target.value })}
+              placeholder="e.g. Aria"
+              className="w-full rounded-xl border border-[#E8E0D5] bg-white px-3 py-2 text-xs text-[#1C1510] focus:outline-none focus:border-[rgba(26,107,60,0.4)] transition placeholder:text-[#6B5E52]/40"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-mono text-[#6B5E52] mb-1">Company</label>
+            <input
+              type="text"
+              value={agentConfig.company}
+              onChange={e => setAgentConfig({ ...agentConfig, company: e.target.value })}
+              placeholder="e.g. ABC Electronics"
+              className="w-full rounded-xl border border-[#E8E0D5] bg-white px-3 py-2 text-xs text-[#1C1510] focus:outline-none focus:border-[rgba(26,107,60,0.4)] transition placeholder:text-[#6B5E52]/40"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-mono text-[#6B5E52] mb-1">Tone</label>
+            <select
+              value={agentConfig.tone}
+              onChange={e => setAgentConfig({ ...agentConfig, tone: e.target.value })}
+              className="w-full rounded-xl border border-[#E8E0D5] bg-white px-3 py-2 text-xs text-[#1C1510] focus:outline-none focus:border-[rgba(26,107,60,0.4)] transition"
+            >
+              {TONE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* AI Instructions — always expanded (item 10) */}
+        <div className="text-[11px] text-[#6B5E52] font-medium mb-1.5">AI instructions</div>
+        <textarea value={systemPrompt} onChange={e => onSystemPromptChange(e.target.value)} rows={5}
+          placeholder="Describe how the assistant should behave…"
+          className="w-full rounded-xl border border-[#E8E0D5] bg-white px-3 py-2 text-xs text-[#1C1510] resize-none focus:outline-none focus:border-[rgba(26,107,60,0.4)] transition placeholder:text-[#6B5E52]/40" />
       </div>
+
+      {/* Connect Documents to this chat (item 8) */}
+      {convId && docs.length > 0 && (
+        <div className="p-3 border-b border-[#E8E0D5] flex-shrink-0">
+          <button onClick={() => setDocsOpen(o => !o)}
+            className="w-full flex items-center justify-between text-[10px] font-mono text-[#6B5E52] uppercase tracking-widest hover:text-[#1C1510] transition mb-1">
+            <span>Connect docs to this chat {connectedDocIds.length > 0 && `(${connectedDocIds.length})`}</span>
+            <span>{docsOpen ? '▲' : '▼'}</span>
+          </button>
+          {!docsOpen && connectedDocIds.length === 0 && (
+            <p className="text-[10px] text-[#6B5E52] italic">No docs connected — AI will reply from instructions only.</p>
+          )}
+          {docsOpen && (
+            <div className="space-y-1 mt-1">
+              {docs.map(d => (
+                <label key={d.id} className="flex items-center gap-2 cursor-pointer rounded-xl hover:bg-white px-2 py-1.5 transition">
+                  <input
+                    type="checkbox"
+                    checked={connectedDocIds.includes(d.id)}
+                    onChange={() => toggleDoc(d.id)}
+                    disabled={d.status !== 'ready'}
+                    className="accent-[#1A6B3C]"
+                  />
+                  <span className={`flex items-center gap-1.5 text-xs truncate ${d.status !== 'ready' ? 'opacity-40' : 'text-[#1C1510]'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${d.status === 'ready' ? 'bg-[#1A6B3C]' : 'bg-[#E8A020] animate-pulse'}`} />
+                    {d.filename}
+                  </span>
+                </label>
+              ))}
+              {connectedDocIds.length === 0 && (
+                <p className="text-[10px] text-[#6B5E52] italic px-2">Tick docs to include in this chat&apos;s search.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Conversations */}
       <nav className="flex-1 overflow-y-auto p-2">
@@ -137,25 +231,8 @@ export function Sidebar({ persona, onPersonaChange, systemPrompt, onSystemPrompt
         ))}
       </nav>
 
-      {/* My Documents */}
-      {docs.length > 0 && (
-        <div className="border-t border-[#E8E0D5] p-2">
-          <button onClick={() => setDocsOpen(o => !o)}
-            className="w-full flex items-center justify-between px-2 py-1.5 text-[10px] font-mono text-[#6B5E52] uppercase tracking-widest hover:text-[#1C1510] transition">
-            <span>My Documents ({docs.length})</span>
-            <span>{docsOpen ? '▲' : '▼'}</span>
-          </button>
-          {docsOpen && docs.map(d => (
-            <div key={d.id} className="flex items-center gap-2 px-2 py-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${d.status === 'ready' ? 'bg-[#1A6B3C]' : 'bg-[#E8A020] animate-pulse'}`} />
-              <span className="text-xs text-[#1C1510] truncate">{d.filename}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Footer */}
-      <div className="p-3 border-t border-[#E8E0D5] flex gap-2">
+      <div className="p-3 border-t border-[#E8E0D5] flex gap-2 flex-shrink-0">
         <Link href="/upload"
           className="flex-1 rounded-xl border border-[#E8E0D5] bg-white hover:border-[rgba(26,107,60,0.3)] hover:bg-[#EBF5EF] px-3 py-2 text-xs text-center text-[#1C1510] transition">
           Add document

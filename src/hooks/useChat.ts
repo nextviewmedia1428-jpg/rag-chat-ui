@@ -17,7 +17,7 @@ export function useChat({ conversationId, persona, systemPrompt, knowledgeBase, 
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { setLastSources } = useChatContext()
+  const { setLastSources, agentConfig, connectedDocIds } = useChatContext()
 
   const sendMessage = useCallback(async (content: string) => {
     setError(null)
@@ -35,7 +35,15 @@ export function useChat({ conversationId, persona, systemPrompt, knowledgeBase, 
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversation_id: conversationId, message: content, persona, system_prompt: systemPrompt, knowledge_base: knowledgeBase }),
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          message: content,
+          persona,
+          system_prompt: systemPrompt,
+          knowledge_base: knowledgeBase,
+          agent_config: agentConfig,
+          connected_doc_ids: connectedDocIds,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -57,7 +65,7 @@ export function useChat({ conversationId, persona, systemPrompt, knowledgeBase, 
     } finally {
       setIsLoading(false)
     }
-  }, [conversationId, persona, systemPrompt, knowledgeBase, onTokensUpdate])
+  }, [conversationId, persona, systemPrompt, knowledgeBase, agentConfig, connectedDocIds, onTokensUpdate, setLastSources])
 
   return { messages, isLoading, error, sendMessage }
 }

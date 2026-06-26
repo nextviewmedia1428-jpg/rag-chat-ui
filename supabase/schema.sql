@@ -71,18 +71,25 @@ create table public.token_usage (
 alter table public.token_usage enable row level security;
 create policy "owner" on public.token_usage for all using (auth.uid() = user_id);
 
+-- MIGRATION: add document_ids to conversations (run once)
+-- alter table public.conversations add column document_ids uuid[] default array[]::uuid[];
+
 -- VECTOR SEARCH FUNCTION
+-- NOTE: If upgrading from old signature, run first:
+--   DROP FUNCTION IF EXISTS public.match_chunks(vector, uuid, integer, float);
 create or replace function match_chunks(
-  query_embedding  vector(1536),
-  filter_user_id   uuid,
-  match_count      int   default 5,
-  match_threshold  float default 0.5
+  query_embedding      vector(1536),
+  filter_user_id       uuid,
+  match_count          int     default 5,
+  match_threshold      float   default 0.3,
+  filter_document_ids  uuid[]  default null
 )
 returns table (content text, similarity float)
 language sql stable as $$
   select content, 1 - (embedding <=> query_embedding) as similarity
   from public.document_chunks
   where user_id = filter_user_id
+    and (filter_document_ids is null or document_id = any(filter_document_ids))
     and 1 - (embedding <=> query_embedding) >= match_threshold
   order by embedding <=> query_embedding
   limit match_count;

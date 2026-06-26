@@ -4,7 +4,6 @@ import OpenAI from 'openai'
 import { extractText } from 'unpdf'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-const LIGHTRAG_URL = process.env.LIGHTRAG_URL
 const CHUNK_SIZE = 1500  // chars ≈ 375 tokens
 const CHUNK_OVERLAP = 150
 const DAILY_TOKEN_LIMIT = parseInt(process.env.DAILY_TOKEN_LIMIT ?? '50000')
@@ -97,23 +96,7 @@ async function processDocument(
       return
     }
 
-    // 1. Send original PDF file to LightRAG (it does its own extraction)
-    if (LIGHTRAG_URL) {
-      try {
-        const form = new FormData()
-        form.append('file', new Blob([buffer], { type: 'application/pdf' }), file.name)
-        const lrRes = await fetch(`${LIGHTRAG_URL}/documents/upload`, {
-          method: 'POST',
-          body: form,
-        })
-        const lrBody = await lrRes.text()
-        console.log('[upload] LightRAG upload status:', lrRes.status, lrBody.slice(0, 200))
-      } catch (e) {
-        console.error('[upload] LightRAG upload error:', e)
-      }
-    }
-
-    // 2. Chunk + embed → Supabase pgvector
+    // Chunk + embed → Supabase pgvector
     const chunks = chunkText(text)
     for (let i = 0; i < chunks.length; i += 10) {
       const batch = chunks.slice(i, i + 10)

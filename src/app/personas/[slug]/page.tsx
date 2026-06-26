@@ -117,6 +117,10 @@ function PersonaPageInner({ slug }: { slug: string }) {
       setKnowledgeBase: () => {},
       lastSources,
       setLastSources,
+      agentConfig: { name: '', company: '', tone: 'Professional' },
+      setAgentConfig: () => {},
+      connectedDocIds: [],
+      setConnectedDocIds: () => {},
     }}>
       <div className="flex h-screen overflow-hidden bg-gray-950 text-white">
 

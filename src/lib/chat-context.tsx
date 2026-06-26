@@ -15,6 +15,12 @@ export interface Sources {
   semantic: string[]
 }
 
+export interface AgentConfig {
+  name: string
+  company: string
+  tone: string
+}
+
 interface ChatContextValue {
   systemPrompt: string
   setSystemPrompt: (s: string) => void
@@ -22,6 +28,10 @@ interface ChatContextValue {
   setKnowledgeBase: (kb: string) => void
   lastSources: Sources | null
   setLastSources: (s: Sources | null) => void
+  agentConfig: AgentConfig
+  setAgentConfig: (c: AgentConfig) => void
+  connectedDocIds: string[]
+  setConnectedDocIds: (ids: string[]) => void
 }
 
 export const ChatContext = createContext<ChatContextValue>({
@@ -31,6 +41,10 @@ export const ChatContext = createContext<ChatContextValue>({
   setKnowledgeBase: () => {},
   lastSources: null,
   setLastSources: () => {},
+  agentConfig: { name: '', company: '', tone: 'Professional' },
+  setAgentConfig: () => {},
+  connectedDocIds: [],
+  setConnectedDocIds: () => {},
 })
 
 export const useChatContext = () => useContext(ChatContext)

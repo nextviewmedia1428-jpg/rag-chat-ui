@@ -6,16 +6,22 @@ export async function PATCH(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id, title } = await req.json().catch(() => ({}))
-  if (!id || !title) return NextResponse.json({ error: 'id and title required' }, { status: 400 })
+  const body = await req.json().catch(() => ({}))
+  const { id, title, document_ids } = body
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+
+  const updates: Record<string, unknown> = {}
+  if (title) updates.title = title.slice(0, 120)
+  if (document_ids !== undefined) updates.document_ids = document_ids
+  if (!Object.keys(updates).length) return NextResponse.json({ error: 'nothing to update' }, { status: 400 })
 
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('conversations')
-    .update({ title: title.slice(0, 120) })
+    .update(updates)
     .eq('id', id)
     .eq('user_id', user.id)
-    .select('id, title')
+    .select('id, title, document_ids')
     .single()
 
   if (error) return NextResponse.json({ error: 'DB error' }, { status: 500 })
@@ -43,7 +49,7 @@ export async function GET() {
   const admin = await createAdminClient()
   const { data } = await admin
     .from('conversations')
-    .select('id, title, persona, created_at, updated_at')
+    .select('id, title, persona, document_ids, created_at, updated_at')
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false })
     .limit(50)
@@ -60,7 +66,7 @@ export async function POST(req: NextRequest) {
   const admin = await createAdminClient()
   const { data, error } = await admin
     .from('conversations')
-    .insert({ user_id: user.id, persona })
+    .insert({ user_id: user.id, persona, document_ids: [] })
     .select()
     .single()
 

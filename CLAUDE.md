@@ -2,11 +2,11 @@
 
 ## What This Is
 
-Portfolio Project #1. A RAG chatbot where users upload PDFs and chat with an AI that answers from them. Demonstrates: full-stack AI product, dual retrieval strategy, persona system, token management.
+Portfolio Project #1. A RAG chatbot where users upload PDFs and an AI answers from them using dual retrieval — pgvector semantic search + LightRAG knowledge graph. Live demo on the landing page uses ABC Electronics mock documents.
 
-**Upwork pitch angle:** "AI-powered document assistant — upload any PDF and chat with it instantly."
+**Upwork pitch angle:** "AI-powered document assistant — upload any PDF and chat with it instantly. Dual retrieval: semantic search + knowledge graph."
 
-**No n8n involved.** This is a direct API integration stack — Next.js calls LightRAG, Supabase, and OpenAI directly.
+**No n8n involved.** Direct API integration stack — Next.js calls LightRAG, Supabase, and OpenAI directly.
 
 ---
 
@@ -24,92 +24,68 @@ Portfolio Project #1. A RAG chatbot where users upload PDFs and chat with an AI 
 
 ---
 
-## How the Stack Works (full data flow)
+## Architecture — Full Data Flow
 
-### Upload flow (user uploads a PDF)
-
+### Upload flow
 ```
-Browser → POST /api/upload (Next.js on Vercel)
-    │
-    ├─ 1. Auth check (Supabase JWT)
-    ├─ 2. Create document record in Supabase (status: processing)
-    ├─ 3. Extract text for Supabase:
-    │       └─ Mistral OCR if MISTRAL_API_KEY set (handles image PDFs)
-    │       └─ unpdf fallback (text-based PDFs, serverless-compatible)
-    ├─ 4. Send original PDF file → LightRAG POST /documents/upload (multipart)
-    │       └─ LightRAG does its own PDF extraction + builds knowledge graph
-    │       └─ Runs on Render, uses OpenAI gpt-4o-mini to extract entities/relations
-    │       └─ Graph building is async — appears in WebUI 30–60s after upload
-    ├─ 5. Chunk extracted text (1500 chars, 150 overlap) → embed with OpenAI text-embedding-3-small
-    │       └─ Store chunks + embeddings in Supabase pgvector
-    └─ 6. Update document status → ready
+Browser → POST /api/upload
+    ├─ Auth check (Supabase JWT)
+    ├─ Create document record (status: processing)
+    ├─ Extract text via unpdf (Mistral OCR if MISTRAL_API_KEY set)
+    ├─ Send PDF → LightRAG /documents/upload (builds knowledge graph async)
+    ├─ Chunk text (1500 chars, 150 overlap) → embed with text-embedding-3-small
+    │       └─ Store as plain float array in document_chunks.embedding (NOT JSON.stringify)
+    └─ Update document status → ready
 ```
 
-### Chat flow (user asks a question)
-
+### Chat flow (authenticated users)
 ```
-Browser → POST /api/chat (Next.js on Vercel)
-    │
-    ├─ 1. Auth check + daily token limit check (Supabase)
-    ├─ 2. DUAL RETRIEVAL (runs in parallel):
-    │       ├─ A. Semantic search: embed query → match_chunks() in Supabase pgvector (top 5)
-    │       └─ B. Graph RAG: POST /api/v1/query to LightRAG (hybrid mode, top 5)
-    ├─ 3. Merge both result sets into a single context block
-    ├─ 4. Call OpenAI gpt-4o-mini with: system persona + merged context + message history
-    └─ 5. Save reply to Supabase, update token_usage
+Browser → POST /api/chat
+    ├─ Auth + daily token limit check
+    ├─ DUAL RETRIEVAL (parallel):
+    │       ├─ pgvector: embed query → match_chunks() top 5, threshold 0.3
+    │       └─ LightRAG: POST /query mode=mix top_k=5
+    ├─ Merge context → OpenAI gpt-4o-mini
+    └─ Save reply, update token_usage
 ```
 
-### Why dual retrieval?
-- **LightRAG (GraphRAG):** Understands entity relationships across the whole document. Better for "what is the relationship between X and Y?" questions.
-- **Supabase pgvector (semantic):** Fast, user-scoped chunk search. Better for "find the part that mentions X" questions.
-- Both run in parallel and their results are merged — covers each other's blind spots.
+### Demo flow (no login)
+```
+Browser → POST /api/demo-chat  (pgvector only, fast <3s)
+        → POST /api/lightrag-query  (fired separately by client, 25s timeout)
+    
+demo-chat:
+    ├─ Read DEMO_USER_ID per-request (not module-level constant)
+    ├─ Embed query → match_chunks(filter_user_id=DEMO_USER_ID, match_count=10)
+    ├─ Filter similarity >= 0.3 in app code
+    └─ OpenAI gpt-4o-mini with pgvector context
 
-### Why no n8n?
-n8n is for workflow automation between external services. This stack is a direct API product — Next.js server-side code handles all the logic. n8n would add latency and complexity for no gain here. n8n is used in other portfolio projects (lead management, calling agent).
+lightrag-query (separate route, called by browser after chat reply lands):
+    └─ POST /query to Render, 25s timeout, returns {text}
+```
+
+**Why split demo-chat and lightrag-query?**
+Vercel Hobby has a 10s function timeout. LightRAG takes 5-25s depending on cache. Splitting lets the chat response arrive immediately from pgvector while LightRAG fills in the panel asynchronously.
 
 ---
 
-## Architecture Diagram
+## Demo Section Architecture
 
-```
-User Browser
-    │
-    ▼
-Next.js API Routes (Vercel)
-    │
-    ├──────────────────────────────────────────┐
-    │                                          │
-    ▼                                          ▼
-LightRAG (Render)                     Supabase (pgvector)
-GraphRAG: entity/relation graph       Semantic chunk search
-gpt-4o-mini for graph building        text-embedding-3-small
-    │                                          │
-    └──────────────┬───────────────────────────┘
-                   │
-                   ▼
-           Merged context
-                   │
-                   ▼
-         OpenAI gpt-4o-mini
-         (answer synthesis)
-                   │
-                   ▼
-           Response to user
-```
+Landing page demo (`/`) uses ABC Electronics mock documents:
+- `public/Mock Documents/abc_electronics_company_overview.pdf`
+- `public/Mock Documents/abc_electronics_product_catalogue.pdf`
+- `public/Mock Documents/abc_electronics_warranty_and_service.pdf`
+- `public/Mock Documents/abc_electronics_hr_policy.pdf`
 
----
+**5 personas** (keys: `abc-general-secretary`, `abc-hr-support`, `abc-customer-support`, `abc-sales-team`, `abc-sales-trainer`) defined in `src/lib/personas.ts`.
 
-## Tech Stack
+**DEMO_USER_ID** env var = Supabase UUID of the account that uploaded the 4 ABC Electronics PDFs. pgvector searches chunks belonging to this user.
 
-| Layer | Tech | Notes |
-|---|---|---|
-| Frontend | Next.js 16, App Router, TypeScript, Tailwind | Vercel |
-| LightRAG backend | Python, FastAPI, LightRAG library | Render free tier |
-| Database | Supabase (PostgreSQL + pgvector) | Auth + chunks + metadata |
-| LLM (chat + graph) | OpenAI gpt-4o-mini | Chat synthesis + LightRAG graph building |
-| Embeddings | OpenAI text-embedding-3-small (1536d) | Both upload and query |
-| PDF extraction | unpdf (serverless-compatible pdfjs WASM) | Replaced pdf-parse which crashes on Vercel Turbopack |
-| Vision OCR | Mistral OCR API | Optional — image-heavy PDFs only |
+**Render keep-warm:** `RenderStatusProvider` in root layout pings `/api/lightrag-health` every 10 min to prevent 15-min inactivity spin-down. On cold start detected (server up but `/documents` empty), auto-triggers `/api/demo-sync` to re-upload the 4 PDFs.
+
+**Knowledge graph:** `/api/graph` fetches from LightRAG `/graphs?label=*`, filters top 50 nodes by degree server-side (raw response is ~150KB, would timeout if proxied whole). Rendered as canvas force-directed graph in cream/forest theme.
+
+**Retrieved context panel:** After each chat reply, shows pgvector chunks with similarity scores (green badge) and LightRAG synthesized text (gold badge, loads async).
 
 ---
 
@@ -117,16 +93,20 @@ gpt-4o-mini for graph building        text-embedding-3-small
 
 | File | Purpose |
 |---|---|
-| `src/app/api/chat/route.ts` | Dual retrieval + OpenAI synthesis |
-| `src/app/api/upload/route.ts` | PDF → LightRAG + Supabase pipeline |
-| `src/app/api/conversations/route.ts` | List / create conversations |
-| `src/lib/types.ts` | Persona type + PERSONA_PROMPTS |
-| `src/lib/supabase-server.ts` | Server-side Supabase clients (user + admin) |
-| `src/lib/supabase-browser.ts` | Browser-side Supabase client |
+| `src/app/api/demo-chat/route.ts` | Demo chat — pgvector only, fast |
+| `src/app/api/lightrag-query/route.ts` | LightRAG query — separate route, 25s timeout |
+| `src/app/api/graph/route.ts` | Graph viz data — filters top 50 server-side |
+| `src/app/api/lightrag-health/route.ts` | Health check — detects cold graph via /documents |
+| `src/app/api/demo-sync/route.ts` | Re-uploads 4 ABC PDFs to LightRAG on cold start |
+| `src/app/api/admin/reembed/route.ts` | One-shot: re-embeds all DEMO_USER_ID chunks |
+| `src/app/api/debug-demo/route.ts` | Debug: shows similarity scores for a test query |
+| `src/app/api/chat/route.ts` | Auth'd chat — dual retrieval |
+| `src/app/api/upload/route.ts` | PDF upload pipeline |
+| `src/components/DemoSection.tsx` | Landing page demo UI |
+| `src/components/GraphViz.tsx` | Canvas force-directed graph, cream theme |
+| `src/components/RenderStatus.tsx` | Provider: keep-warm + cold-start recovery |
+| `src/lib/personas.ts` | All personas inc. 5 ABC Electronics demo personas |
 | `supabase/schema.sql` | Full DB schema — run once in Supabase SQL editor |
-| `lightrag-server/serve.py` | LightRAG startup script (bypasses Gunicorn wrapper) |
-| `lightrag-server/render.yaml` | Render deployment config |
-| `.env.local` | All secrets — never commit |
 
 ---
 
@@ -141,39 +121,46 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
 # LightRAG
 LIGHTRAG_URL=https://ai-rag-agent-zs1y.onrender.com
 
-# OpenAI (embeddings + chat synthesis + LightRAG graph building)
+# OpenAI
 OPENAI_API_KEY=sk-proj-...
 
-# Optional — Vision OCR for image-heavy PDFs
-MISTRAL_API_KEY=
+# Demo
+DEMO_USER_ID=<UUID of Supabase account that uploaded the 4 ABC Electronics PDFs>
 
-# Limits
+# Optional
+MISTRAL_API_KEY=
 DAILY_TOKEN_LIMIT=50000
 ```
 
 ---
 
-## Personas
+## Supabase Schema Notes
 
-| Persona key | Behaviour |
-|---|---|
-| `assistant` | General-purpose helpful assistant |
-| `customer_support` | Friendly, solution-focused support agent |
-| `receptionist` | Warm, professional front-desk style |
-| `book_guide` | Academic, cites sections, encourages deeper reading |
-
-Swap persona via `PersonaSelector.tsx` — changes the system prompt on every chat request.
+`match_chunks` RPC signature (run in SQL editor if updating):
+```sql
+create or replace function match_chunks(
+  query_embedding  vector(1536),
+  filter_user_id   uuid,
+  match_count      int   default 5,
+  match_threshold  float default 0.3
+)
+returns table (content text, similarity float)
+```
+If two overloads exist (ambiguity error), drop the old one first:
+```sql
+drop function if exists public.match_chunks(vector, uuid, integer);
+```
 
 ---
 
 ## Known Limitations (free tier)
 
-- **LightRAG on Render free tier spins down after 15 min inactivity.** First request after sleep takes ~30s cold start. Knowledge graph resets on each redeploy (no persistent disk — `/tmp` only).
-- **File size limit: 4MB.** Vercel Hobby serverless functions have a hard 4.5MB body payload limit. PDFs larger than 4MB are rejected. Upgrade to Vercel Pro or switch to direct-to-Supabase-Storage upload to lift this.
-- **Upload is synchronous.** Vercel kills background tasks after the response is sent, so the full pipeline (extract → LightRAG → embed → pgvector) runs before returning. Large PDFs near the 4MB limit may approach the 60s function timeout.
-- **LightRAG only indexes text-layer PDFs.** Scanned/image PDFs need `MISTRAL_API_KEY` set for OCR — otherwise extraction returns empty text.
-- **Supabase free tier:** 500MB storage, 50K monthly active users.
-- **LightRAG correct API endpoints:** `POST /documents/upload` (multipart file), `POST /query` (search). Not `/api/v1/insert` or `/api/v1/query`.
+- **Vercel Hobby 10s timeout.** LightRAG queries are decoupled to a separate client-side fetch to work around this. Auth'd `/api/chat` still combines both — may timeout on LightRAG cache miss.
+- **Render free tier spins down after 15 min.** Keep-warm ping every 10 min prevents this while a tab is open. Graph resets on any Render restart (stored in /tmp). Auto-sync re-uploads PDFs on detection.
+- **File size limit: 4MB.** Vercel Hobby body limit.
+- **Embeddings must be plain float arrays.** Do NOT JSON.stringify() before storing — pgvector's <=> operator cannot compute similarity on string columns.
+- **LightRAG graph label=*.** Using specific label (e.g. company name) returns empty. Always use `label=*`.
+- **pgvector similarity for text-embedding-3-small** tends to be low (0.1–0.3 range for relevant content). Threshold of 0.3 in app code; do not set higher.
 
 ---
 
@@ -181,28 +168,17 @@ Swap persona via `PersonaSelector.tsx` — changes the system prompt on every ch
 
 | Item | Status |
 |---|---|
-| Folder + docs | ✅ Done |
-| Supabase schema | ✅ Done |
-| LightRAG on Render | ✅ Live |
-| Next.js scaffold | ✅ Done |
-| Auth (Supabase) | ✅ Done |
-| PDF upload flow | ✅ Working (text-based PDFs ≤4MB) |
-| Chat + dual retrieval | ✅ Working |
-| UI components | ✅ Done |
-| Vercel deploy | ✅ Live |
-| Email confirmation redirect | ✅ Fixed (Supabase Site URL set to Vercel URL) |
-| Loom demo | ⬜ Pending — record tomorrow |
+| MVP deployed | ✅ Live |
+| ABC Electronics demo docs | ✅ 4 PDFs, all personas |
+| pgvector dual retrieval | ✅ Working (fixed JSON.stringify bug + reembedded) |
+| LightRAG GraphRAG | ✅ Working (decoupled from Vercel timeout) |
+| Knowledge graph viz | ✅ Cream theme, full-width, cream palette |
+| Demo retrieved context panel | ✅ pgvector chunks + GraphRAG text, similarity scores |
+| Render keep-warm + auto-sync | ✅ Working |
+| Login — no auto-chat creation | ✅ Fixed |
+| Favicon | ✅ Green 'i' icon (replaced Vercel triangle) |
+| Loom demo | ⬜ Next task |
 
 ---
 
-## Loom Demo Script (3 min)
-
-1. **[0:00–0:20]** Open the live URL. "This is a document assistant that lets you chat with any PDF."
-2. **[0:20–0:50]** Sign up → lands on chat. Show the 4 personas in the sidebar.
-3. **[0:50–1:30]** Upload a PDF (use something with clear content). Watch status → ready.
-4. **[1:30–2:30]** Ask 2–3 questions. Show it citing content from the PDF. Switch persona mid-conversation.
-5. **[2:30–3:00]** "Built with Next.js, LightRAG GraphRAG, Supabase pgvector, and OpenAI. Dual retrieval gives better answers than either method alone."
-
----
-
-*Last updated: 2026-06-24, Sprint 1, Day 3. Status: MVP deployed.*
+*Last updated: 2026-06-26, Sprint 1, Day 4.*

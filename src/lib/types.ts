@@ -13,6 +13,7 @@ export interface Conversation {
   user_id: string
   title: string
   persona: Persona
+  document_ids: string[]
   created_at: string
   updated_at: string
 }

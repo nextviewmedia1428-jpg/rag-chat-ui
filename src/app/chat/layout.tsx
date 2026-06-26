@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import { Sidebar } from '@/components/Sidebar'
 import { Persona, PERSONA_PROMPTS } from '@/lib/types'
-import { ChatContext } from '@/lib/chat-context'
+import { ChatContext, AgentConfig } from '@/lib/chat-context'
 
 function ChatLayoutInner({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
@@ -14,6 +14,8 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
   const [persona, setPersona] = useState<Persona>('assistant')
   const [systemPrompt, setSystemPrompt] = useState('')
   const [knowledgeBase, setKnowledgeBase] = useState('')
+  const [agentConfig, setAgentConfig] = useState<AgentConfig>({ name: '', company: '', tone: 'Professional' })
+  const [connectedDocIds, setConnectedDocIds] = useState<string[]>([])
 
   useEffect(() => {
     if (user === null) router.push('/login')
@@ -36,7 +38,13 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
   if (!user) return null
 
   return (
-    <ChatContext.Provider value={{ systemPrompt, setSystemPrompt, knowledgeBase, setKnowledgeBase, lastSources: null, setLastSources: () => {} }}>
+    <ChatContext.Provider value={{
+      systemPrompt, setSystemPrompt,
+      knowledgeBase, setKnowledgeBase,
+      lastSources: null, setLastSources: () => {},
+      agentConfig, setAgentConfig,
+      connectedDocIds, setConnectedDocIds,
+    }}>
       <div className="flex h-screen overflow-hidden">
         <Sidebar
           persona={persona}

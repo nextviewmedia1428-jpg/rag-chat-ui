@@ -109,7 +109,6 @@ export default function HomePage() {
         </Link>
         <div className="hidden md:flex gap-9 text-sm text-[#6B5E52]">
           <a href="#how-it-works" className="hover:text-[#1C1510] transition">How it works</a>
-          <a href="#personas"     className="hover:text-[#1C1510] transition">Personas</a>
           <a href="#demo"         className="hover:text-[#1C1510] transition">Live Demo</a>
         </div>
         <Link href="/login" className="rounded-full bg-[#1C1510] hover:bg-[#2d241e] text-white text-sm font-semibold px-5 py-2.5 transition shadow-sm">
@@ -240,13 +239,15 @@ export default function HomePage() {
       <section id="case-study" className="px-6 md:px-12 py-28 bg-white/60" data-hub-x="78" data-hub-y="36">
         <div className="max-w-7xl mx-auto">
           <motion.div variants={fade} initial="hidden" whileInView="show" viewport={{ once: true }} className="mb-14">
-            <div className="inline-flex items-center gap-2 font-mono text-[11px] border border-[rgba(232,160,32,0.3)] bg-[#FDF6E6] text-[#E8A020] px-4 py-1.5 rounded-full mb-6">
+            <div className="inline-flex items-center gap-2 font-mono text-[11px] border border-[rgba(232,160,32,0.3)] bg-[#FDF6E6] text-[#E8A020] px-4 py-1.5 rounded-full mb-8">
               🔒 Client name changed per NDA · All metrics are real
             </div>
-            <Eyebrow>Case Study</Eyebrow>
-            <h2 className="font-serif text-[38px] md:text-[44px] mb-3 text-[#1C1510]">Client — Indian Conglomerate</h2>
+            <div className="mt-2">
+              <Eyebrow>Case Study</Eyebrow>
+            </div>
+            <h2 className="font-serif text-[38px] md:text-[44px] mb-3 text-[#1C1510]">Client — Indian Manufacturing Group</h2>
             <p className="text-[16px] text-[#6B5E52] max-w-[540px] leading-relaxed">
-              A ₹18,200 Cr Indian conglomerate. 31,000 employees. 6 business verticals. Knowledge siloed across every department.
+              A ₹3,800 Cr Indian manufacturing group. 7,200 employees. 4 strategic business units. Institutional knowledge locked in disconnected documents across every department.
             </p>
           </motion.div>
 
@@ -254,14 +255,14 @@ export default function HomePage() {
             {/* Problem */}
             <motion.div variants={fade} className="rounded-2xl bg-[#1C1510] text-white p-9">
               <blockquote className="font-serif text-[21px] leading-[1.5] font-normal border-l-[3px] border-[#E8A020] pl-5 mb-7 italic">
-                &ldquo;We have 31,000 people, six businesses, and a support team drowning in questions they&apos;ve answered before.&rdquo;
+                &ldquo;We have 7,200 people across four businesses, and a support team spending most of their day answering questions that are already in our manuals.&rdquo;
               </blockquote>
               <div className="grid grid-cols-2 gap-5">
                 {[
-                  { num: '71%',    desc: 'of all support tickets were repeat questions with documented answers' },
-                  { num: '22 days', desc: 'average time for a new hire to reach full productivity' },
-                  { num: '72%',    desc: 'of IT team time spent on L1 tickets already in the runbook' },
-                  { num: '4,200',  desc: 'monthly tickets audited — 38 failure patterns identified' },
+                  { num: '63%',    desc: 'of support tickets were repeat questions with documented answers' },
+                  { num: '16 days', desc: 'average time for a new hire to reach full productivity' },
+                  { num: '68%',    desc: 'of IT team hours spent on L1 tickets already covered by the runbook' },
+                  { num: '1,800',  desc: 'monthly tickets audited — 24 recurring failure patterns identified' },
                 ].map(({ num, desc }) => (
                   <div key={num}>
                     <b className="block font-mono text-[22px] text-[#E8A020] mb-1">{num}</b>
@@ -277,12 +278,12 @@ export default function HomePage() {
                 <h3 className="font-mono text-[11px] tracking-[0.1em] uppercase text-[#6B5E52] mb-6">The Results — 90 Days Post-Deploy</h3>
                 <div className="grid grid-cols-3 gap-3 mb-6">
                   {[
-                    { val: '68%',   label: 'resolved by AI' },
-                    { val: '42 sec', label: 'avg first response' },
-                    { val: '94%',   label: 'employee adoption' },
-                    { val: '12 wks', label: 'brief to live deploy' },
-                    { val: '₹4.2 Cr', label: 'saved in Year 1' },
-                    { val: '3,400+', label: 'daily queries' },
+                    { val: '52%',    label: 'queries resolved by AI' },
+                    { val: '3.2 min', label: 'avg first response' },
+                    { val: '76%',    label: 'employee adoption' },
+                    { val: '8 wks',  label: 'brief to live deploy' },
+                    { val: '₹68 L',  label: 'saved in Year 1' },
+                    { val: '850+',   label: 'daily queries handled' },
                   ].map(({ val, label }) => (
                     <div key={label} className="rounded-xl bg-[#FAF7F2] border border-[#E8E0D5] p-4">
                       <b className="block font-mono text-[18px] text-[#1A6B3C]">{val}</b>
@@ -292,10 +293,10 @@ export default function HomePage() {
                 </div>
                 <div className="border-t border-[#E8E0D5] pt-5 space-y-2.5">
                   {[
-                    { wk: 'Wk 1–2',   t: 'Audit & Discovery',    d: '4,200 tickets, 38 failure patterns.' },
-                    { wk: 'Wk 3–5',   t: 'Knowledge Engineering', d: 'Docs cleaned, structured, graph built.' },
-                    { wk: 'Wk 6–9',   t: 'Build & Tune',          d: '5 AI personas built and tested.' },
-                    { wk: 'Wk 10–12', t: 'Deploy & Measure',      d: 'WhatsApp, web, Slack, CRM sidebar.' },
+                    { wk: 'Wk 1–2', t: 'Audit & Discovery',    d: '1,800 tickets, 24 failure patterns mapped.' },
+                    { wk: 'Wk 3–4', t: 'Knowledge Engineering', d: 'Docs structured, graph built across 4 SBUs.' },
+                    { wk: 'Wk 5–7', t: 'Build & Tune',          d: '4 AI personas built, tested with real staff.' },
+                    { wk: 'Wk 8',   t: 'Deploy & Measure',      d: 'Web chat + WhatsApp live. Metrics tracked.' },
                   ].map((r, i) => (
                     <div key={i} className="flex gap-3 text-sm">
                       <span className="font-mono text-[#FF4D3D] font-semibold min-w-[70px]">{r.wk}</span>
